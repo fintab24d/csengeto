@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { supabase, SCHOOL_SLUG } from './supabase'
 import type { Schedule } from './engine'
+import type { Countdown } from './kinds'
 
 export interface SchoolData {
   name: string
   settings: { timezone: string; theme: 'dark' | 'light'; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number }
   schedules: Schedule[]
   closed: { day: string; reason: string }[]
+  countdowns: Countdown[]
 }
 const KEY = 'csengeto-cache-v1'
 const one = <T,>(x: T | T[]) => (Array.isArray(x) ? x[0] : x)
@@ -24,11 +26,11 @@ export function useSchool() {
     const load = async () => {
       const { data: row, error: err } = await supabase
         .from('schools')
-        .select('name, settings(*), schedules(*, lessons(*)), closed_days(day, reason)')
+        .select('name, settings(*), schedules(*, lessons(*)), closed_days(day, reason), countdowns(*)')
         .eq('slug', SCHOOL_SLUG).single()
       if (!alive) return
       if (err || !row) { setOffline(true); setError(err?.message ?? 'Nincs adat'); return }
-      const d: SchoolData = { name: row.name, settings: one(row.settings as any), schedules: row.schedules as any, closed: row.closed_days as any }
+      const d: SchoolData = { name: row.name, settings: one(row.settings as any), schedules: row.schedules as any, closed: row.closed_days as any, countdowns: (row as any).countdowns ?? [] }
       localStorage.setItem(KEY, JSON.stringify(d))
       setData(d); setOffline(false); setError(null)
     }

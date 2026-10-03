@@ -53,3 +53,14 @@ main.tv{max-width:none;align-content:center;gap:2vh}
 .side{display:grid;gap:20px;align-content:start}.meta::first-letter{text-transform:uppercase}
 .off{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:12px}.off li{display:grid;gap:2px;padding-left:14px;border-left:3px solid var(--line)}
 .off b{font:600 1.5rem var(--f)}.off span{color:var(--mut)}.off span::first-letter{text-transform:uppercase}.nextday b{color:var(--lesson)}
+.events{grid-column:1/-1;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.ev{--k:#8fa4ff;position:relative;overflow:hidden;display:grid;gap:12px;align-content:start;padding:20px;background:var(--surf);border:1px solid var(--line);border-radius:20px}
+.ev::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--k)}
+.ev::after{content:"";position:absolute;right:-50px;top:-50px;width:160px;height:160px;border-radius:50%;background:color-mix(in srgb,var(--k) 15%,transparent)}
+.ev>*{position:relative;z-index:1}.ev.big{grid-column:1/-1}
+.ev-top{display:flex;align-items:center;gap:10px}.ico{font-size:1.7rem}.ev h3{margin:0;font:600 1.6rem var(--f)}
+.units{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.units div{display:grid;justify-items:center;padding:12px 4px;border-radius:14px;background:color-mix(in srgb,var(--k) 13%,transparent)}
+.units b{font:700 clamp(2.6rem,10vw,5.2rem)/1 var(--f)}.units span{color:var(--mut)}
+.days{display:flex;align-items:baseline;gap:8px}.days b{font:700 3.4rem/1 var(--f);color:var(--k)}.days span,.ev-date{color:var(--mut)}
+.ev-date::first-letter{text-transform:uppercase}

@@ -1,4 +1,4 @@
-# Csengetési rendszer (React + Vite + Supabase)
+# SuliDash – iskolai csengetési rendszer (React + Vite + Supabase)
 
 Oldalak: `/` irányítópult (teljes napi rend), `/display` TV-mód.
 
@@ -6,6 +6,7 @@ Oldalak: `/` irányítópult (teljes napi rend), `/display` TV-mód.
 1. **Supabase projekt:** supabase.com → New project (Free). Várd meg, míg elkészül.
 2. **Adatbázis:** bal menü *SQL Editor* → New query → másold be a `supabase/schema.sql` tartalmát → Run. Ez létrehozza a táblákat, az RLS szabályokat és a kezdő csengetési rendet (8 óra, 2026.10.23 és 2026.11.02 tanítás nélküli nappal).
    Utána futtasd le ugyanígy a `supabase/update.sql`-t is (logó-tároló és TV-beállítások).
+   Végül futtasd a `supabase/update2.sql`-t is (visszaszámlálók: szünetek, ünnepek; példa adatokkal).
 3. **URL és kulcs:** *Project Settings → API*: ott van a **Project URL** és az **anon / publishable key** (a service_role kulcsot SOHA ne tedd a frontendbe).
 4. **Env:** másold a `.env.example`-t `.env` néven, töltsd ki a két értéket.
 5. **Helyi indítás:** `npm install` majd `npm run dev` → http://localhost:5173 és /display

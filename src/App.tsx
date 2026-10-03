@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { audioReady, enableAudio, ring } from './lib/sound'
 import { useSchool } from './lib/useSchool'
+import { KIND } from './lib/kinds'
 import { computeState, fmtCount, fmtHM, pickSchedule, toSec, zoned, instantOf, nextSchoolDay, type BellState } from './lib/engine'
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -63,6 +64,7 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') ?? '')
   useEffect(() => { document.documentElement.dataset.theme = theme || data?.settings.theme || 'dark' }, [theme, data])
   useEffect(() => { document.documentElement.dataset.phase = state?.phase ?? '' }, [state?.phase])
+  useEffect(() => { document.title = data ? `${data.name} – SuliDash` : 'SuliDash' }, [data])
 
   // Csengetési hang: állapotváltáskor szól, ha az admin bekapcsolta és a hang engedélyezve van.
   const [audioOn, setAudioOn] = useState(audioReady())
@@ -84,6 +86,10 @@ export default function App() {
   const first = pv && byPos(pv.schedule.lessons)[0]
   const until = pv && first ? Math.round((instantOf(pv.date, toSec(first.start_time), data.settings.timezone) - now.getTime()) / 1000) : 0
   const dayName = (d: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('hu-HU', { timeZone: 'UTC', ...o }).format(new Date(d + 'T12:00:00Z'))
+  // Visszaszámlálók: a legközelebbi 4 még le nem járt esemény, másodperc pontosan (óraátállással is helyesen).
+  const events = ((data.countdowns ?? []) as any[])
+    .map(c => ({ ...c, left: Math.round((instantOf(c.target_date, toSec(c.target_time), data.settings.timezone) - now.getTime()) / 1000) }))
+    .filter(c => c.left > 0).sort((x, y) => x.left - y.left).slice(0, 4)
   const upcoming = (data.closed as { day: string; reason: string }[]).filter(c => c.day > z.date).sort((x, y) => x.day.localeCompare(y.day)).slice(0, 4)
   const dateText = new Intl.DateTimeFormat('hu-HU', { timeZone: 'UTC', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
     .format(new Date(z.date + 'T12:00:00Z'))
@@ -127,5 +133,19 @@ export default function App() {
         <span>{dayName(c.day, { weekday: 'long' })}, {c.reason}</span></li>)}</ul>
     </section>}
     </div>}
+
+    {!tv && events.length > 0 && <section className="events">
+      {events.map((e, i) => {
+        const k = KIND[e.kind] ?? KIND.other
+        const d = Math.floor(e.left / 86400), h = Math.floor((e.left % 86400) / 3600), m = Math.floor((e.left % 3600) / 60), sec = e.left % 60
+        return <article key={e.id} className={`ev ${i === 0 ? 'big' : ''}`} style={{ '--k': k.color } as CSSProperties}>
+          <div className="ev-top"><span className="ico" aria-hidden="true">{k.icon}</span><h3>{e.title}</h3></div>
+          {i === 0
+            ? <div className="units">{([[d, 'nap'], [h, 'óra'], [m, 'perc'], [sec, 'mp']] as [number, string][]).map(([v, l]) => <div key={l}><b>{pad(v)}</b><span>{l}</span></div>)}</div>
+            : <div className="days"><b>{d}</b><span>nap{h > 0 || d === 0 ? `, ${h} óra` : ''}</span></div>}
+          <div className="ev-date">{dayName(e.target_date, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
+        </article>
+      })}
+    </section>}
   </main>
 }
