@@ -53,3 +53,24 @@ export const fmtCount = (s: number) => {
   const p = (n: number) => String(n).padStart(2, '0')
   return h ? `${h}:${p(m)}:${p(x)}` : `${p(m)}:${p(x)}`
 }
+
+// ---- Következő tanítási nap (hétvégén, ünnepnapon, tanítás után) ----
+const dayNum = (d: string) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 86400000
+export const addDays = (d: string, n: number) => new Date((dayNum(d) + n) * 86400000).toISOString().slice(0, 10)
+
+/** A következő nap (legfeljebb 60 napon belül), amelyen van csengetési rend és nincs zárva az iskola. */
+export function nextSchoolDay(today: string, schedules: Schedule[], closed: { day: string }[]) {
+  for (let i = 1; i <= 60; i++) {
+    const date = addDays(today, i)
+    const weekday = ((new Date(dayNum(date) * 86400000).getUTCDay() + 6) % 7) + 1
+    const schedule = pickSchedule(schedules, weekday)
+    if (schedule && schedule.lessons.length > 0 && !closed.some(c => c.day === date)) return { date, weekday, schedule }
+  }
+}
+
+/** Az adott helyi dátum+napszak valódi időpillanata (ms). Az óraátállást is helyesen kezeli. */
+export function instantOf(date: string, secs: number, tz: string) {
+  let t = dayNum(date) * 86400000 + secs * 1000
+  for (let i = 0; i < 2; i++) { const z = zoned(new Date(t), tz); t += ((dayNum(date) - dayNum(z.date)) * 86400 + secs - z.secs) * 1000 }
+  return t
+}

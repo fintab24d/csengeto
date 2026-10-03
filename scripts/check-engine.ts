@@ -1,6 +1,6 @@
 // Futtatás: npm run check  (Node 22.6+). Az időlogikát ellenőrzi, hálózat nélkül.
 import assert from 'node:assert/strict'
-import { computeState, pickSchedule, zoned, type Lesson, type Schedule } from '../src/lib/engine.ts'
+import { computeState, instantOf, nextSchoolDay, pickSchedule, zoned, type Lesson, type Schedule } from '../src/lib/engine.ts'
 
 const A = [['08:00','08:45'],['08:55','09:40'],['09:50','10:35'],['10:45','11:30'],['11:40','12:25'],['12:35','13:20'],['13:30','14:15'],['14:25','15:10']]
 const lessons: Lesson[] = A.map(([s, e], i) => ({ id: `l${i + 1}`, label: `${i + 1}. óra`, start_time: s, end_time: e, position: i + 1 }))
@@ -26,4 +26,12 @@ ok('ünnepnap: 2026-10-23 zárva', () => { const { st } = at('2026-10-23T08:00:0
 ok('napra szabott rend (péntek) elsőbbséget élvez', () => {
   const s: Schedule[] = [{ id: 'a', name: 'N', weekdays: [], is_default: true, lessons }, { id: 'b', name: 'P', weekdays: [5], is_default: false, lessons: [] }]
   assert.equal(pickSchedule(s, 5)?.id, 'b'); assert.equal(pickSchedule(s, 2)?.id, 'a'); assert.equal(pickSchedule(s, 6), undefined) })
+const sch: Schedule[] = [{ id: 's', name: 'N', weekdays: [], is_default: true, lessons }]
+ok('következő tanítási nap: szombatról hétfő', () => assert.equal(nextSchoolDay('2026-10-24', sch, [])?.date, '2026-10-26'))
+ok('ünnepnap átugrása: hétfő zárva → kedd', () => assert.equal(nextSchoolDay('2026-10-24', sch, [{ day: '2026-10-26' }])?.date, '2026-10-27'))
+ok('zárt péntek után hétfő', () => assert.equal(nextSchoolDay('2026-10-22', sch, [{ day: '2026-10-23' }])?.date, '2026-10-26'))
+ok('visszaszámlálás pontos a tavaszi óraátállás fölött (42 óra)', () =>
+  assert.equal(Math.round((instantOf('2026-03-30', 8 * 3600, 'Europe/Budapest') - Date.parse('2026-03-28T12:00:00Z')) / 1000), 42 * 3600))
+ok('visszaszámlálás pontos az őszi óraátállás fölött (43 óra)', () =>
+  assert.equal(Math.round((instantOf('2026-10-26', 8 * 3600, 'Europe/Budapest') - Date.parse('2026-10-24T12:00:00Z')) / 1000), 43 * 3600))
 console.log(`TZ=${process.env.TZ ?? '(rendszer)'}: ${n} teszt OK`)

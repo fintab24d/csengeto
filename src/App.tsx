@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { audioReady, enableAudio, ring } from './lib/sound'
 import { useSchool } from './lib/useSchool'
-import { computeState, fmtCount, fmtHM, pickSchedule, toSec, zoned, type BellState } from './lib/engine'
+import { computeState, fmtCount, fmtHM, pickSchedule, toSec, zoned, instantOf, nextSchoolDay, type BellState } from './lib/engine'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const hms = (s: number) => `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`
@@ -18,7 +18,7 @@ function useBell() {
     const schedule = pickSchedule(data.schedules, z.weekday)
     const closed = data.closed.find(c => c.day === z.date)?.reason
     const state = computeState(z.secs, schedule?.lessons ?? [], closed, !schedule)
-    return { data, offline, z, schedule, state }
+    return { data, offline, z, schedule, state, now }
   }, [now, data, offline])
 }
 
@@ -50,8 +50,15 @@ function Next({ s, secs }: { s: BellState; secs: number }) {
     <span>{fmtHM(s.next.start_time)}{m > 0 && m < 120 ? `, ${m} perc múlva` : ''}</span></div>
 }
 
+/** Zárva (hétvége, ünnep) vagy tanítás után: mikor kezdődik legközelebb a tanítás. */
+function NextDay({ label, time, until }: { label: string; time: string; until: number }) {
+  const d = Math.floor(until / 86400), h = Math.floor((until % 86400) / 3600), m = Math.floor((until % 3600) / 60)
+  const left = [d ? `${d} nap` : '', h ? `${h} óra` : '', `${m} perc`].filter(Boolean).join(' ')
+  return <div className="next nextday"><span>Legközelebb</span><b>{label}, {time}</b><span>még {left}</span></div>
+}
+
 export default function App() {
-  const { data, offline, z, schedule, state } = useBell() as any
+  const { data, offline, z, schedule, state, now } = useBell() as any
   const tv = location.pathname.startsWith('/display')
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') ?? '')
   useEffect(() => { document.documentElement.dataset.theme = theme || data?.settings.theme || 'dark' }, [theme, data])
@@ -70,7 +77,14 @@ export default function App() {
 
   if (!data) return <main><div className="hero"><div className="title">{offline ? 'Nincs kapcsolat és nincs mentett adat.' : 'Betöltés…'}</div></div></main>
   const s: BellState = state
-  const L = schedule ? [...schedule.lessons].sort((a: any, b: any) => a.position - b.position) : []
+  const byPos = (x: any[]) => [...x].sort((p: any, q: any) => p.position - q.position)
+  const pv = s.phase === 'closed' || s.phase === 'after' ? nextSchoolDay(z.date, data.schedules, data.closed) : undefined
+  const tl = s.phase === 'closed' ? pv?.schedule : schedule            // zárva: a következő tanítási nap rendje látszik
+  const L = tl ? byPos(tl.lessons) : []
+  const first = pv && byPos(pv.schedule.lessons)[0]
+  const until = pv && first ? Math.round((instantOf(pv.date, toSec(first.start_time), data.settings.timezone) - now.getTime()) / 1000) : 0
+  const dayName = (d: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('hu-HU', { timeZone: 'UTC', ...o }).format(new Date(d + 'T12:00:00Z'))
+  const upcoming = (data.closed as { day: string; reason: string }[]).filter(c => c.day > z.date).sort((x, y) => x.day.localeCompare(y.day)).slice(0, 4)
   const dateText = new Intl.DateTimeFormat('hu-HU', { timeZone: 'UTC', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
     .format(new Date(z.date + 'T12:00:00Z'))
 
@@ -88,12 +102,13 @@ export default function App() {
       <div className="clock">{tv && !data.settings.tv_show_seconds ? hms(z.secs).slice(0, 5) : hms(z.secs)}</div>
       <div className="date">{dateText}</div>
       <Ring s={s} />
-      {(!tv || data.settings.tv_show_next) && <Next s={s} secs={z.secs} />}
+      {(!tv || data.settings.tv_show_next) && (pv && first ? <NextDay label={dayName(pv.date, { weekday: 'long' })} time={fmtHM(first.start_time)} until={until} /> : <Next s={s} secs={z.secs} />)}
     </section>
 
-    {!tv && L.length > 0 && <section className="timeline">
-      <h2>{schedule.name}</h2>
-      <p className="meta">{L.length} óra, {fmtHM(L[0].start_time)} – {fmtHM(L[L.length - 1].end_time)}</p>
+    {!tv && <div className="side">
+    {L.length > 0 && <section className="timeline">
+      <h2>{tl.name}</h2>
+      <p className="meta">{s.phase === 'closed' && pv ? `${dayName(pv.date, { weekday: 'long', month: 'long', day: 'numeric' })}, ` : ''}{L.length} óra, {fmtHM(L[0].start_time)} – {fmtHM(L[L.length - 1].end_time)}</p>
       <ol>{L.map((l: any, i: number) => {
         const nx = L[i + 1]
         const cls = s.current?.id === l.id ? 'now' : s.next?.id === l.id ? 'upnext' : s.phase !== 'closed' && z.secs >= toSec(l.end_time) ? 'past' : ''
@@ -106,5 +121,11 @@ export default function App() {
         </Fragment>
       })}</ol>
     </section>}
+    {upcoming.length > 0 && <section className="timeline">
+      <h2>Közelgő tanítás nélküli napok</h2>
+      <ul className="off">{upcoming.map(c => <li key={c.day}><b>{dayName(c.day, { month: 'long', day: 'numeric' })}</b>
+        <span>{dayName(c.day, { weekday: 'long' })}, {c.reason}</span></li>)}</ul>
+    </section>}
+    </div>}
   </main>
 }
