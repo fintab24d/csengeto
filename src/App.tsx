@@ -64,14 +64,7 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') ?? '')
   useEffect(() => { document.documentElement.dataset.theme = theme || data?.settings.theme || 'dark' }, [theme, data])
   useEffect(() => { document.documentElement.dataset.phase = state?.phase ?? '' }, [state?.phase])
-  useEffect(() => { document.title = data ? `${data.name} – Tudd, mikor kezdődik.` : 'SuliBell' const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
-    ?? document.createElement('link')
-
-  favicon.rel = 'icon'
-  favicon.type = 'image/png'
-  favicon.href = '/logo.png'
-
-  document.head.appendChild(favicon) }, [data])
+  useEffect(() => { document.title = data ? `${data.name} – Tudd, mikor kezdődik.` : 'SuliBell' }, [data])
 
   // Csengetési hang: állapotváltáskor szól, ha az admin bekapcsolta és a hang engedélyezve van.
   const [audioOn, setAudioOn] = useState(audioReady())
