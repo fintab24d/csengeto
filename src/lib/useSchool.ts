@@ -1,0 +1,41 @@
+import { useEffect, useState } from 'react'
+import { supabase, SCHOOL_SLUG } from './supabase'
+import type { Schedule } from './engine'
+
+export interface SchoolData {
+  name: string
+  settings: { timezone: string; theme: 'dark' | 'light'; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number }
+  schedules: Schedule[]
+  closed: { day: string; reason: string }[]
+}
+const KEY = 'csengeto-cache-v1'
+const one = <T,>(x: T | T[]) => (Array.isArray(x) ? x[0] : x)
+
+/** Betölti az iskola adatait; hálózati hiba esetén az utolsó mentett példánnyal megy tovább (offline mód). */
+export function useSchool() {
+  const [data, setData] = useState<SchoolData | null>(() => {
+    try { return JSON.parse(localStorage.getItem(KEY) ?? 'null') } catch { return null }
+  })
+  const [offline, setOffline] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    const load = async () => {
+      const { data: row, error: err } = await supabase
+        .from('schools')
+        .select('name, settings(*), schedules(*, lessons(*)), closed_days(day, reason)')
+        .eq('slug', SCHOOL_SLUG).single()
+      if (!alive) return
+      if (err || !row) { setOffline(true); setError(err?.message ?? 'Nincs adat'); return }
+      const d: SchoolData = { name: row.name, settings: one(row.settings as any), schedules: row.schedules as any, closed: row.closed_days as any }
+      localStorage.setItem(KEY, JSON.stringify(d))
+      setData(d); setOffline(false); setError(null)
+    }
+    load()
+    const t = setInterval(load, 5 * 60_000)           // 5 percenként szinkronizál
+    window.addEventListener('online', load)           // visszatérő net esetén azonnal
+    return () => { alive = false; clearInterval(t); window.removeEventListener('online', load) }
+  }, [])
+  return { data, offline, error }
+}

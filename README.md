@@ -1,0 +1,22 @@
+# Csengetési rendszer (React + Vite + Supabase)
+
+Oldalak: `/` irányítópult (teljes napi rend), `/display` TV-mód.
+
+## Beüzemelés (kb. 15 perc, 0 Ft)
+1. **Supabase projekt:** supabase.com → New project (Free). Várd meg, míg elkészül.
+2. **Adatbázis:** bal menü *SQL Editor* → New query → másold be a `supabase/schema.sql` tartalmát → Run. Ez létrehozza a táblákat, az RLS szabályokat és a kezdő csengetési rendet (8 óra, 2026.10.23 és 2026.11.02 tanítás nélküli nappal).
+   Utána futtasd le ugyanígy a `supabase/update.sql`-t is (logó-tároló és TV-beállítások).
+3. **URL és kulcs:** *Project Settings → API*: ott van a **Project URL** és az **anon / publishable key** (a service_role kulcsot SOHA ne tedd a frontendbe).
+4. **Env:** másold a `.env.example`-t `.env` néven, töltsd ki a két értéket.
+5. **Helyi indítás:** `npm install` majd `npm run dev` → http://localhost:5173 és /display
+6. **Admin:** *Authentication → Users → Add user* (email + jelszó). Majd SQL Editorban:
+   `insert into school_members select '<USER_UUID>', id from schools where slug='demo';`
+   Ezután csak ez a felhasználó tud írni az iskola adataiba (RLS), a rendeket, ünnepnapokat és beállításokat a `/admin` oldalon (belépés után) szerkesztheti.
+7. **Vercel:** töltsd fel GitHubra → vercel.com → Add New Project → importáld → *Environment Variables*-be vidd fel a 3 `VITE_` változót → Deploy.
+
+## Hogyan működik
+Az idő számítása `Europe/Budapest` zónában történik (Intl, nyári/téli átállással), a böngésző időzónájától függetlenül; a gép óráját feltételezzük pontosnak (kijelzőn érdemes NTP). A rend a `localStorage`-ba cache-elődik: ha elmegy a net, "Offline mód" jelenik meg, de a nap tovább fut; visszatérő nettel újra szinkronizál (5 percenként is).
+
+## Free tier korlátok
+- Supabase Free: 500 MB adatbázis, 50 000 havi aktív felhasználó, 5 GB forgalom; **1 hét inaktivitás után a projekt szünetel** (a kijelző 5 perces lekérdezése ezt megelőzi, ha folyamatosan nyitva van).
+- Vercel Hobby: nem kereskedelmi célra, 100 GB/hó sávszélesség – egy iskolának bőven elég.

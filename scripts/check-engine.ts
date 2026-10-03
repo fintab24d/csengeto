@@ -1,0 +1,29 @@
+// Futtatás: npm run check  (Node 22.6+). Az időlogikát ellenőrzi, hálózat nélkül.
+import assert from 'node:assert/strict'
+import { computeState, pickSchedule, zoned, type Lesson, type Schedule } from '../src/lib/engine.ts'
+
+const A = [['08:00','08:45'],['08:55','09:40'],['09:50','10:35'],['10:45','11:30'],['11:40','12:25'],['12:35','13:20'],['13:30','14:15'],['14:25','15:10']]
+const lessons: Lesson[] = A.map(([s, e], i) => ({ id: `l${i + 1}`, label: `${i + 1}. óra`, start_time: s, end_time: e, position: i + 1 }))
+const at = (iso: string, closed?: string[]) => {
+  const z = zoned(new Date(iso), 'Europe/Budapest')
+  const sch = pickSchedule([{ id: 's', name: 'N', weekdays: [], is_default: true, lessons }], z.weekday)
+  return { z, st: computeState(z.secs, sch?.lessons ?? [], closed?.includes(z.date) ? 'Ünnepnap' : undefined, !sch) }
+}
+let n = 0; const ok = (name: string, f: () => void) => { f(); n++; console.log('  ok', name) }
+
+ok('08:44:59 → óra vége előtt 1 mp, "hamarosan"', () => { const { st } = at('2026-10-05T06:44:59Z'); assert.equal(st.phase, 'lesson'); assert.equal(st.remaining, 1); assert.ok(st.soon) })
+ok('08:45:00 → szünet, 10 perc', () => { const { st } = at('2026-10-05T06:45:00Z'); assert.equal(st.phase, 'break'); assert.equal(st.remaining, 600); assert.equal(st.next?.label, '2. óra') })
+ok('08:55:00 → 2. óra kezdődik', () => { const { st } = at('2026-10-05T06:55:00Z'); assert.equal(st.phase, 'lesson'); assert.equal(st.current?.label, '2. óra') })
+ok('tanítás előtt: 07:30 → 1800 mp', () => { const { st } = at('2026-10-05T05:30:00Z'); assert.equal(st.phase, 'before'); assert.equal(st.remaining, 1800) })
+ok('tanítás után: 15:10', () => { assert.equal(at('2026-10-05T13:10:00Z').st.phase, 'after') })
+ok('progress: 12:00 az 5. órában = 20/45', () => { const { st } = at('2026-10-05T10:00:00Z'); assert.equal(st.current?.label, '5. óra'); assert.ok(Math.abs(st.progress - 20 / 45) < 1e-9) })
+ok('DST: nyári (CEST) és téli (CET) 08:00 ugyanaz', () => {
+  assert.equal(at('2026-03-30T06:00:00Z').st.current?.label, '1. óra')   // CEST, UTC+2
+  assert.equal(at('2026-10-26T07:00:00Z').st.current?.label, '1. óra')   // CET, UTC+1 (átállás után)
+  assert.equal(at('2026-03-27T07:00:00Z').st.current?.label, '1. óra') })  // CET (átállás előtt)
+ok('hétvége: nincs tanítás', () => { const { st } = at('2026-10-24T08:00:00Z'); assert.equal(st.phase, 'closed'); assert.equal(st.reason, 'Ma nincs tanítás.') })
+ok('ünnepnap: 2026-10-23 zárva', () => { const { st } = at('2026-10-23T08:00:00Z', ['2026-10-23']); assert.equal(st.phase, 'closed'); assert.equal(st.reason, 'Ünnepnap') })
+ok('napra szabott rend (péntek) elsőbbséget élvez', () => {
+  const s: Schedule[] = [{ id: 'a', name: 'N', weekdays: [], is_default: true, lessons }, { id: 'b', name: 'P', weekdays: [5], is_default: false, lessons: [] }]
+  assert.equal(pickSchedule(s, 5)?.id, 'b'); assert.equal(pickSchedule(s, 2)?.id, 'a'); assert.equal(pickSchedule(s, 6), undefined) })
+console.log(`TZ=${process.env.TZ ?? '(rendszer)'}: ${n} teszt OK`)
