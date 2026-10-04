@@ -90,7 +90,7 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') ?? '')
   useEffect(() => { document.documentElement.dataset.theme = theme || data?.settings.theme || 'dark' }, [theme, data])
   useEffect(() => { document.documentElement.dataset.phase = state?.phase ?? '' }, [state?.phase])
-  useEffect(() => { document.title = data ? `${data.name} – SuliDash` : 'SuliDash' }, [data])
+  useEffect(() => { document.title = data ? data.name : 'Csengetés' }, [data])
 
   // Csengetési hang: állapotváltáskor szól, ha az admin bekapcsolta és a hang engedélyezve van.
   const [audioOn, setAudioOn] = useState(audioReady())

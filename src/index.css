@@ -177,4 +177,3 @@ button:active:not(:disabled){box-shadow:0 0 0 var(--edge)}
 .ticks{opacity:.65}.strip .bar{box-shadow:inset 0 0 0 1px var(--line)}
 .l.past,.seg.past{opacity:.55}.wd.off{opacity:.72}
 .panel,.stat,.wd,.ev,.ticker{border-color:var(--line)}
-[data-theme=dark] .logo{background:rgba(255,255,255,.92);padding:3px 7px;border-radius:8px}
