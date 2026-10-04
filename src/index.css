@@ -80,7 +80,7 @@ button:focus-visible{outline:2px solid var(--next);outline-offset:3px}
 .ev-top{display:flex;align-items:center;gap:10px}.ico{font-size:1.7rem}.ev h3{margin:0;font:600 1.6rem var(--f)}
 .units{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .units div{display:grid;justify-items:center;gap:4px;padding:12px 4px;border-radius:14px;background:color-mix(in srgb,var(--k) 13%,transparent)}
-.units .digits{font-size:clamp(2.2rem,9vw,4.2rem)}.units span{color:var(--mut)}
+.units .digits{font-size:clamp(2.2rem,9vw,4.2rem)}.units div>span:last-child{color:var(--mut)}
 .days{display:flex;align-items:baseline;gap:8px}.days b{font:700 3.4rem/1 var(--f);color:var(--k)}.days span,.ev-date{color:var(--mut)}
 .ev-date::first-letter{text-transform:uppercase}
 .offl{list-style:none;margin:0;padding:0;display:grid;gap:10px}.offl li{display:grid;gap:2px;padding-left:12px;border-left:3px solid var(--line)}
@@ -177,3 +177,6 @@ button:active:not(:disabled){box-shadow:0 0 0 var(--edge)}
 .ticks{opacity:.65}.strip .bar{box-shadow:inset 0 0 0 1px var(--line)}
 .l.past,.seg.past{opacity:.55}.wd.off{opacity:.72}
 .panel,.stat,.wd,.ev,.ticker{border-color:var(--line)}
+
+/* A számjegy színét semmilyen általános span-szabály nem írhatja felül */
+.digits .tile{color:var(--tilefg)}
