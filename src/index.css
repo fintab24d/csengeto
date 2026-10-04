@@ -1,14 +1,14 @@
-/* Stílus: "menetrend-tábla" + kockás füzet. Krétatábla-zöld, jelzősárga, csempés számjegyek. */
-:root{--bg:#0b1310;--panel:#122019;--fg:#eef3ee;--mut:#8da597;--line:#25392f;--grid:rgba(255,255,255,.035);
---lesson:#ffd23f;--break:#6cc4ff;--next:#ff8a7a;--tile:#060b09;--tilefg:#eef3ee;--glow:transparent;
---f:"Barlow Condensed","Arial Narrow",system-ui,sans-serif}
-[data-theme=light]{--bg:#f4f7f1;--panel:#fff;--fg:#14231c;--mut:#5a6e63;--line:#d3ddd4;--grid:rgba(40,110,170,.10);
---lesson:#a87800;--break:#0d6aa8;--next:#c8402e;--tile:#17261e;--tilefg:#f4f7f0}
+/* Stílus: "menetrend-tábla" + kockás füzet, neonzöld színséma, Google Sans betű. */
+:root{--bg:#040806;--panel:#0a130d;--fg:#e9ffef;--mut:#7ea58a;--line:#173020;--grid:rgba(57,255,122,.055);
+--lesson:#39ff7a;--break:#2ee6d6;--next:#d4ff3a;--tile:#020503;--tilefg:#39ff7a;--glow:transparent;
+--f:"Google Sans","Google Sans Flex",system-ui,"Segoe UI",sans-serif}
+[data-theme=light]{--bg:#effff4;--panel:#fff;--fg:#06210f;--mut:#4a6b57;--line:#c9e6d3;--grid:rgba(0,168,68,.10);
+--lesson:#00a844;--break:#00857a;--next:#6a8f00;--tile:#06210f;--tilefg:#39ff7a}
 [data-phase=lesson]{--glow:color-mix(in srgb,var(--lesson) 13%,transparent)}
 [data-phase=break]{--glow:color-mix(in srgb,var(--break) 14%,transparent)}
 [data-phase=before]{--glow:color-mix(in srgb,var(--next) 12%,transparent)}
 *{box-sizing:border-box}
-body{margin:0;color:var(--fg);font-family:system-ui,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums;background-color:var(--bg);
+body{margin:0;color:var(--fg);font-family:var(--f);font-variant-numeric:tabular-nums;background-color:var(--bg);
 background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:28px 28px}
 body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(55% 50% at 28% 30%,var(--glow),transparent 70%);transition:background .6s}
 main{max-width:1200px;margin:auto;padding:20px;min-height:100svh;display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-content:start}
@@ -20,7 +20,7 @@ header{display:grid;grid-template-columns:1fr auto;align-items:center;gap:14px 1
 .timebox{grid-column:1/-1;order:3;display:grid;justify-items:center;gap:8px}
 .date{color:var(--mut)}.date::first-letter{text-transform:uppercase}
 /* Gombok: "billentyű" hatás, hover-fény, lenyomódás */
-button{position:relative;overflow:hidden;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:8px 16px;font:600 .95rem system-ui,sans-serif;cursor:pointer;box-shadow:0 3px 0 var(--line);transition:transform .15s,box-shadow .15s,border-color .2s,color .2s}
+button{position:relative;overflow:hidden;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:8px 16px;font:600 .95rem var(--f);cursor:pointer;box-shadow:0 3px 0 var(--line);transition:transform .15s,box-shadow .15s,border-color .2s,color .2s}
 button::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 130%,color-mix(in srgb,var(--lesson) 38%,transparent),transparent 70%);opacity:0;transition:opacity .25s;pointer-events:none}
 button:hover:not(:disabled){transform:translateY(-2px);border-color:var(--lesson);box-shadow:0 5px 0 var(--line)}button:hover:not(:disabled)::before{opacity:1}
 button:active:not(:disabled){transform:translateY(2px);box-shadow:0 0 0 var(--line)}
@@ -150,3 +150,19 @@ body,.panel{transition:background-color .4s,color .4s,border-color .4s}
 @media(hover:hover){.ev:hover,.stat:hover,.wd:hover{transform:translateY(-3px);border-color:var(--lesson)}.bells li:hover{transform:translateX(4px)}}
 .foot{display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:center;padding:6px 0 14px;color:var(--mut);font-size:.85rem}.ver{padding:1px 10px;border:1px solid var(--line);border-radius:99px}
 @media(prefers-reduced-motion:reduce){main>*,.tile,.bell-fx,.ticks,body::before,.l.now .chip,.mark,.cta{animation:none!important}button{transition:none}}
+
+/* Neonzöld hatások */
+.tile{width:.66em;text-shadow:0 0 .35em color-mix(in srgb,var(--tilefg) 65%,transparent)}
+[data-theme=dark] .brand{text-shadow:0 0 14px color-mix(in srgb,var(--lesson) 55%,transparent)}
+[data-theme=dark] .arc{filter:drop-shadow(0 0 5px var(--lesson))}
+[data-theme=dark] .ring.break .arc{filter:drop-shadow(0 0 5px var(--break))}[data-theme=dark] .ring.before .arc{filter:drop-shadow(0 0 5px var(--next))}
+main:not(.tv) .now.lesson{border-color:color-mix(in srgb,var(--lesson) 45%,var(--line));box-shadow:0 0 30px -10px var(--lesson)}
+main:not(.tv) .now.break{border-color:color-mix(in srgb,var(--break) 45%,var(--line));box-shadow:0 0 30px -10px var(--break)}
+button:hover:not(:disabled){box-shadow:0 5px 0 var(--line),0 0 18px -4px var(--lesson)}
+[data-theme=light] .days b{color:color-mix(in srgb,var(--k) 55%,#06210f)}
+/* A Google Sans szélesebb a korábbi keskeny betűnél: a méreteket kicsit visszavettem */
+.brand{font-size:1.3rem}.title{font-weight:700}.board h2{font-size:1.6rem}
+.l b{font-size:1.2rem}.l .t{font-size:1.05rem}.chip{font-size:.7rem}
+.stat b{font-size:1.7rem}.bells b{font-size:1.3rem}.wd b{font-size:1.15rem}.next b{font-size:1.3rem}
+.ev h3{font-size:1.25rem}.days b{font-size:2.8rem}.offl b{font-size:1.2rem}.seg{font-size:1rem}.ends{font-size:.9rem}
+.timebox .digits{font-size:clamp(2.4rem,11vw,4.2rem)}
