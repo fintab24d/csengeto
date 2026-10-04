@@ -19,8 +19,15 @@ header{display:grid;grid-template-columns:1fr auto;align-items:center;gap:14px 1
 .tools{display:flex;gap:8px;align-items:center}
 .timebox{grid-column:1/-1;order:3;display:grid;justify-items:center;gap:8px}
 .date{color:var(--mut)}.date::first-letter{text-transform:uppercase}
-button{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:7px 14px;font:inherit;cursor:pointer}
-button:focus-visible{outline:2px solid var(--next);outline-offset:2px}
+/* Gombok: "billentyű" hatás, hover-fény, lenyomódás */
+button{position:relative;overflow:hidden;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:8px 16px;font:600 .95rem system-ui,sans-serif;cursor:pointer;box-shadow:0 3px 0 var(--line);transition:transform .15s,box-shadow .15s,border-color .2s,color .2s}
+button::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 130%,color-mix(in srgb,var(--lesson) 38%,transparent),transparent 70%);opacity:0;transition:opacity .25s;pointer-events:none}
+button:hover:not(:disabled){transform:translateY(-2px);border-color:var(--lesson);box-shadow:0 5px 0 var(--line)}button:hover:not(:disabled)::before{opacity:1}
+button:active:not(:disabled){transform:translateY(2px);box-shadow:0 0 0 var(--line)}
+button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+button:focus-visible{outline:2px solid var(--next);outline-offset:3px}
+.cta{border-color:var(--lesson);color:var(--lesson);animation:nudge 2.4s ease-in-out infinite}
+@keyframes nudge{0%,100%{box-shadow:0 3px 0 var(--line),0 0 0 0 color-mix(in srgb,var(--lesson) 55%,transparent)}50%{box-shadow:0 3px 0 var(--line),0 0 0 9px transparent}}
 .pill{background:var(--lesson);color:#000;border-radius:99px;padding:3px 12px;font-size:.85rem}
 
 /* Csempés számjegyek */
@@ -45,7 +52,7 @@ button:focus-visible{outline:2px solid var(--next);outline-offset:2px}
 .inner{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:3px;padding:12cqw;text-align:center}
 .title{font:600 clamp(1.5rem,9cqw,3rem)/1.1 var(--f)}.ring.lesson .title{color:var(--lesson)}.ring.break .title{color:var(--break)}.ring.before .title{color:var(--next)}
 .ring.closed .title,.ring.after .title{font-size:8cqw}
-.count{font-size:19cqw}.count.long{font-size:14cqw}.count.soon .tile{outline:2px solid var(--lesson);animation:pulse 1s ease-in-out infinite}
+.count{font-size:19cqw}.count.long{font-size:14cqw}.count.soon .tile{outline:2px solid var(--lesson);animation:flip .38s ease-out,pulse 1s ease-in-out infinite}
 .sub{color:var(--mut);font-size:4.4cqw}.pct{font:500 6cqw var(--f);color:var(--mut)}
 .flash{animation:flash .9s ease-out}@keyframes flash{from{opacity:.2;transform:scale(1.06)}to{opacity:1;transform:none}}
 @keyframes pulse{50%{outline-color:transparent}}
@@ -124,3 +131,22 @@ main.tv{max-width:none;align-content:center;gap:2vh}
   .tv .stats{grid-template-columns:1fr 1fr}.tv .stat b{font-size:4.4vh}.tv .stat span{font-size:1.9vh}
   .tv .strip .bar{height:6vh}.tv .seg{font-size:3vh}.tv .ends{font-size:2.4vh}
 }
+
+/* Animációk */
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+main>*{animation:rise .6s cubic-bezier(.2,.7,.2,1) both}
+main>:nth-child(2){animation-delay:.07s}main>:nth-child(3){animation-delay:.14s}main>:nth-child(4){animation-delay:.21s}main>:nth-child(5){animation-delay:.28s}main>:nth-child(n+6){animation-delay:.35s}
+@keyframes flip{from{transform:perspective(260px) rotateX(-80deg);opacity:.25}to{transform:perspective(260px) rotateX(0);opacity:1}}
+.tile{animation:flip .38s ease-out}
+.bell-fx{position:absolute;inset:4%;border:2px solid var(--mut);border-radius:50%;pointer-events:none;animation:ripple 1.5s ease-out both}
+.ring.lesson .bell-fx{border-color:var(--lesson)}.ring.break .bell-fx{border-color:var(--break)}.ring.before .bell-fx{border-color:var(--next)}
+@keyframes ripple{from{transform:scale(.7);opacity:.9}to{transform:scale(1.12);opacity:0}}
+.ticks{transform-box:fill-box;transform-origin:center;animation:spin 120s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+body::before{animation:drift 20s ease-in-out infinite alternate}@keyframes drift{to{transform:translate3d(4%,3%,0) scale(1.06)}}
+.l.now .chip{animation:breathe 2s ease-in-out infinite}@keyframes breathe{50%{opacity:.4}}
+.mark{animation:markglow 2s ease-in-out infinite}@keyframes markglow{50%{box-shadow:0 0 12px 2px var(--lesson)}}
+.stat,.wd,.ev,.bells li{transition:transform .25s,border-color .25s,background-color .4s}
+body,.panel{transition:background-color .4s,color .4s,border-color .4s}
+@media(hover:hover){.ev:hover,.stat:hover,.wd:hover{transform:translateY(-3px);border-color:var(--lesson)}.bells li:hover{transform:translateX(4px)}}
+.foot{display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:center;padding:6px 0 14px;color:var(--mut);font-size:.85rem}.ver{padding:1px 10px;border:1px solid var(--line);border-radius:99px}
+@media(prefers-reduced-motion:reduce){main>*,.tile,.bell-fx,.ticks,body::before,.l.now .chip,.mark,.cta{animation:none!important}button{transition:none}}

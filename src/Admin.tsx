@@ -7,7 +7,7 @@ import { KIND, type Countdown } from './lib/kinds'
 
 interface Full {
   id: string; name: string
-  settings: { timezone: string; theme: string; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number }
+  settings: { timezone: string; theme: string; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number; site_version: string; version_note: string }
   countdowns: Countdown[]; announcements: { id: string; text: string; active_until: string | null }[]; schedules: Schedule[]; closed_days: { id: string; day: string; reason: string }[]
 }
 type Res = PromiseLike<{ error: { message: string } | null }>
@@ -110,6 +110,10 @@ function Panel() {
         <label><input type="checkbox" checked={d.settings.tv_show_seconds} onChange={e => setS({ tv_show_seconds: e.target.checked })} /> másodperc az órán</label>
         <label><input type="checkbox" checked={d.settings.tv_show_next} onChange={e => setS({ tv_show_next: e.target.checked })} /> következő óra</label>
         <label>méret <input type="number" min={50} max={150} step={10} defaultValue={d.settings.tv_scale} key={d.settings.tv_scale} onBlur={e => setS({ tv_scale: Math.min(150, Math.max(50, +e.target.value || 100)) })} /> %</label></div>
+      <div className="row">Oldal verziója <input size={8} placeholder="pl. 1.2.0" defaultValue={d.settings.site_version ?? ''} key={'v' + d.settings.site_version}
+          onBlur={e => e.target.value !== (d.settings.site_version ?? '') && setS({ site_version: e.target.value })} />
+        Megjegyzés <input style={{ minWidth: '16rem' }} placeholder="pl. Új közlemények" defaultValue={d.settings.version_note ?? ''} key={'n' + d.settings.version_note}
+          onBlur={e => e.target.value !== (d.settings.version_note ?? '') && setS({ version_note: e.target.value })} /></div>
     </section>
 
     <section><h2>Csengetési rendek</h2>

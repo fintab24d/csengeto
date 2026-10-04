@@ -12,7 +12,7 @@ const CHIP: Record<string, string> = { past: 'vége', now: 'most', upnext: 'köv
 /** Számjegyek "menetrend-tábla" csempékben (ez az oldal vizuális aláírása). */
 function Digits({ text }: { text: string }) {
   return <span className="digits" role="img" aria-label={text}>
-    {text.split('').map((c, i) => c === ':' ? <i key={i}>:</i> : <span key={i} className="tile">{c}</span>)}</span>
+    {text.split('').map((c, i) => c === ':' ? <i key={i}>:</i> : <span key={`${i}${c}`} className="tile">{c}</span>)}</span>
 }
 
 /** 4×/mp-es ellenőrzéssel újraszámolja az állapotot a beállított időzóna (Europe/Budapest) szerint. */
@@ -41,6 +41,7 @@ function Ring({ s }: { s: BellState }) {
       <circle className="track" cx="100" cy="100" r={R} />
       {live && <circle className="arc" cx="100" cy="100" r={R} strokeDasharray={C} strokeDashoffset={C * (1 - s.progress)} />}
     </svg>
+    <span key={`${s.phase}-${s.current?.id ?? s.next?.id}`} className="bell-fx" aria-hidden="true" />
     <div className="inner">
       <div className="title">{title}</div>
       {live && <>
@@ -179,7 +180,7 @@ export default function App() {
       </div>
       <div className="tools">
         {offline && <span className="pill">Offline mód</span>}
-        {data.settings.sound_enabled && !audioOn && <button onClick={async () => setAudioOn(await enableAudio())}>Hang engedélyezése</button>}
+        {data.settings.sound_enabled && !audioOn && <button className="cta" onClick={async () => setAudioOn(await enableAudio())}>Hang engedélyezése</button>}
         {!tv && <button onClick={() => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('theme', t); setTheme(t) }}>Téma</button>}
       </div>
     </header>
@@ -225,5 +226,6 @@ export default function App() {
 
     {tv && strip && <div className="stripbox">{strip}</div>}
     {tv && note && <section className="ticker"><span>Közlemény</span><p key={note.id} className="flash">{note.text}</p></section>}
+    {!tv && data.settings.site_version && <footer className="foot"><span className="ver">Verzió {data.settings.site_version}</span>{data.settings.version_note && <span>{data.settings.version_note}</span>}</footer>}
   </main>
 }
