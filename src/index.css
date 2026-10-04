@@ -15,7 +15,7 @@ main{max-width:1200px;margin:auto;padding:20px;min-height:100svh;display:grid;gr
 
 /* Fejléc: név, óra, eszközök */
 header{display:grid;grid-template-columns:1fr auto;align-items:center;gap:14px 16px}
-.brand{display:inline-flex;align-items:center;gap:10px;font:600 1.6rem var(--f);letter-spacing:.02em}.logo{height:1.8rem;border-radius:4px}
+.brand{display:inline-flex;align-items:center;gap:10px;font:600 1.6rem var(--f);letter-spacing:.02em}.logo{height:2.4rem;width:auto}
 .tools{display:flex;gap:8px;align-items:center}
 .timebox{grid-column:1/-1;order:3;display:grid;justify-items:center;gap:8px}
 .date{color:var(--mut)}.date::first-letter{text-transform:uppercase}

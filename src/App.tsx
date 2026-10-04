@@ -173,7 +173,7 @@ export default function App() {
 
   return <main className={tv ? 'tv' : ''}>
     <header>
-      <span className="brand">{data.settings.logo_url && <img className="logo" src={data.settings.logo_url} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />}{data.name}</span>
+      <span className="brand"><img className="logo" src={data.settings.logo_url || '/logo.png'} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />{data.name}</span>
       <div className="timebox">
         <Digits text={tv && !data.settings.tv_show_seconds ? hms(z.secs).slice(0, 5) : hms(z.secs)} />
         <div className="date">{dateText}</div>
