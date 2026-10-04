@@ -1,6 +1,6 @@
 # Csengetési kijelző
 
-Ez az iskola élő csengetési oldala. Megmutatja, hány óra van, melyik óra vagy szünet tart éppen, és mennyi idő van hátra a következő csengetésig. Nem kell frissítened, magától pörög.
+Ez egy iskolai élő csengetési oldal. Megmutatja, hány óra van, melyik óra vagy szünet tart éppen, és mennyi idő van hátra a következő csengetésig. Nem kell frissítened, magától pörög.
 
 ## Hol találod?
 - **Főoldal:** a teljes napi áttekintés, telefonon és számítógépen is.
