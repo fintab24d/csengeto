@@ -8,7 +8,7 @@ import { KIND, type Countdown } from './lib/kinds'
 interface Full {
   id: string; name: string
   settings: { timezone: string; theme: string; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number }
-  countdowns: Countdown[]; schedules: Schedule[]; closed_days: { id: string; day: string; reason: string }[]
+  countdowns: Countdown[]; announcements: { id: string; text: string; active_until: string | null }[]; schedules: Schedule[]; closed_days: { id: string; day: string; reason: string }[]
 }
 type Res = PromiseLike<{ error: { message: string } | null }>
 const DAYS = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V']
@@ -49,12 +49,13 @@ function Panel() {
   const [msg, setMsg] = useState('')
   const [cd, setCd] = useState({ day: '', reason: '' })
   const [ev, setEv] = useState({ title: '', kind: 'other', date: '', time: '00:00' })
+  const [an, setAn] = useState({ text: '', until: '' })
 
   const load = useCallback(async () => {
     const m = await supabase.from('school_members').select('school_id')
     setAdmin(!!m.data?.length)
     const { data, error } = await supabase.from('schools')
-      .select('id, name, settings(*), schedules(*, lessons(*)), closed_days(*), countdowns(*)').eq('slug', SCHOOL_SLUG).single()
+      .select('id, name, settings(*), schedules(*, lessons(*)), closed_days(*), countdowns(*), announcements(*)').eq('slug', SCHOOL_SLUG).single()
     if (error || !data) return setMsg('Hiba: ' + (error?.message ?? 'nincs adat'))
     const r = data as any
     setD({ ...r, settings: Array.isArray(r.settings) ? r.settings[0] : r.settings })
@@ -148,6 +149,14 @@ function Panel() {
         <input type="date" value={ev.date} onChange={e => setEv({ ...ev, date: e.target.value })} />
         <input type="time" value={ev.time} onChange={e => setEv({ ...ev, time: e.target.value })} />
         <button disabled={!ev.title || !ev.date} onClick={async () => { await run(supabase.from('countdowns').insert({ school_id: d.id, title: ev.title, kind: ev.kind, target_date: ev.date, target_time: ev.time })); setEv({ title: '', kind: 'other', date: '', time: '00:00' }) }}>Hozzáadás</button></div>
+    </section>
+
+    <section><h2>Közlemények (főoldal és TV)</h2>
+      {(d.announcements ?? []).map(n => <div className="row" key={n.id}>{n.text}{n.active_until ? ` (eddig: ${n.active_until})` : ''}
+        <button onClick={() => run(supabase.from('announcements').delete().eq('id', n.id))}>Törlés</button></div>)}
+      <div className="row"><input style={{ minWidth: '18rem' }} placeholder="Közlemény szövege" value={an.text} onChange={e => setAn({ ...an, text: e.target.value })} />
+        <input type="date" title="Meddig látszódjon (üres = amíg törlöd)" value={an.until} onChange={e => setAn({ ...an, until: e.target.value })} />
+        <button disabled={!an.text} onClick={async () => { await run(supabase.from('announcements').insert({ school_id: d.id, text: an.text, active_until: an.until || null })); setAn({ text: '', until: '' }) }}>Hozzáadás</button></div>
     </section>
   </main>
 }

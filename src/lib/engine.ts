@@ -74,3 +74,14 @@ export function instantOf(date: string, secs: number, tz: string) {
   for (let i = 0; i < 2; i++) { const z = zoned(new Date(t), tz); t += ((dayNum(date) - dayNum(z.date)) * 86400 + secs - z.secs) * 1000 }
   return t
 }
+
+export const weekdayOf = (d: string) => ((new Date(dayNum(d) * 86400000).getUTCDay() + 6) % 7) + 1
+/** Tanítási napok száma [from, to] között (mindkét végpont beleszámít). */
+export function schoolDaysBetween(from: string, to: string, schedules: Schedule[], closed: { day: string }[]) {
+  let n = 0
+  for (let d = from, i = 0; d <= to && i < 800; d = addDays(d, 1), i++) {
+    const sch = pickSchedule(schedules, weekdayOf(d))
+    if (sch && sch.lessons.length > 0 && !closed.some(c => c.day === d)) n++
+  }
+  return n
+}

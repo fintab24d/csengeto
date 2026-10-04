@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } fr
 import { audioReady, enableAudio, ring } from './lib/sound'
 import { useSchool } from './lib/useSchool'
 import { KIND } from './lib/kinds'
-import { computeState, fmtCount, fmtHM, instantOf, nextSchoolDay, pickSchedule, toSec, zoned, type BellState } from './lib/engine'
+import { computeState, fmtCount, fmtHM, addDays, instantOf, nextSchoolDay, pickSchedule, schoolDaysBetween, toSec, zoned, type BellState } from './lib/engine'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const hms = (s: number) => `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`
@@ -66,6 +66,23 @@ function NextDay({ label, time, until }: { label: string; time: string; until: n
   return <div className="next nextday"><span>Legközelebb</span><b>{label}, {time}</b><span>még {left}</span></div>
 }
 
+/** A tanítási nap sávja: az órák és szünetek arányosan, a pillanatnyi időt jelző vonallal. */
+function DayStrip({ L, secs, phase }: { L: any[]; secs: number; phase: BellState['phase'] }) {
+  const a = toSec(L[0].start_time), b = toSec(L[L.length - 1].end_time), span = b - a
+  const live = phase === 'lesson' || phase === 'break'
+  return <div className="strip">
+    <div className="bar">
+      {L.map((l, i) => {
+        const s0 = toSec(l.start_time), e0 = toSec(l.end_time)
+        return <i key={l.id} className={`seg ${secs >= e0 ? 'past' : secs >= s0 ? 'on' : ''}`}
+          style={{ left: `${((s0 - a) / span) * 100}%`, width: `${((e0 - s0) / span) * 100}%` }}>{i + 1}</i>
+      })}
+      {live && <span className="mark" style={{ left: `${Math.min(1, Math.max(0, (secs - a) / span)) * 100}%` }} />}
+    </div>
+    <div className="ends"><span>{fmtHM(L[0].start_time)}</span><span>{fmtHM(L[L.length - 1].end_time)}</span></div>
+  </div>
+}
+
 export default function App() {
   const { data, offline, z, schedule, state, now } = useBell() as any
   const tv = location.pathname.startsWith('/display')
@@ -102,6 +119,57 @@ export default function App() {
   const upcoming = (data.closed as { day: string; reason: string }[]).filter(c => c.day > z.date).sort((x, y) => x.day.localeCompare(y.day)).slice(0, 4)
   const p = (on: boolean) => (on ? ({ '--p': `${s.progress * 100}%` } as CSSProperties) : undefined)
 
+  // ---- A mai nap adatai (csak tanítási napon) ----
+  const T = schedule && s.phase !== 'closed' ? byPos(schedule.lessons) : []
+  const hm = (t: number) => `${pad(Math.floor(t / 3600))}:${pad(Math.floor(t / 60) % 60)}`
+  const away = (t: number) => { const m = Math.ceil((t - z.secs) / 60); return m < 120 ? `${m} perc múlva` : `${Math.floor(m / 60)} óra ${m % 60} perc múlva` }
+  const bellList = T.flatMap((l: any) => [{ t: toSec(l.start_time), txt: `${l.label} kezdete` }, { t: toSec(l.end_time), txt: `${l.label} vége` }])
+    .filter((b: any) => b.t > z.secs).sort((x: any, y: any) => x.t - y.t).slice(0, 4)
+  const leftSecs = T.reduce((n: number, l: any) => n + Math.max(0, toSec(l.end_time) - Math.max(toSec(l.start_time), z.secs)), 0)
+  const dayPct = T.length ? Math.round(Math.min(1, Math.max(0, (z.secs - toSec(T[0].start_time)) / (toSec(T[T.length - 1].end_time) - toSec(T[0].start_time)))) * 100) : 0
+  const nb = T.findIndex((l: any, i: number) => toSec(l.end_time) > z.secs && T[i + 1])
+  const stats = T.length > 0 && <div className="stats">
+    <div className="stat"><b>{T.filter((l: any) => toSec(l.end_time) <= z.secs).length} / {T.length}</b><span>elmúlt óra</span></div>
+    <div className="stat"><b>{Math.floor(leftSecs / 3600) ? `${Math.floor(leftSecs / 3600)} óra ` : ''}{Math.floor(leftSecs / 60) % 60} perc</b><span>tanítási idő hátra</span></div>
+    <div className="stat"><b>{dayPct}%</b><span>a nap haladása</span></div>
+    {nb >= 0 && <div className="stat"><b>{Math.round((toSec(T[nb + 1].start_time) - toSec(T[nb].end_time)) / 60)} perc</b><span>következő szünet, {fmtHM(T[nb].end_time)} után</span></div>}
+  </div>
+  const strip = T.length > 0 && <DayStrip L={T} secs={z.secs} phase={s.phase} />
+  const bells = bellList.length > 0 && <div className="bells"><div className="tag">Következő csengetések</div>
+    <ul>{bellList.map((b: any) => <li key={b.t + b.txt}><b>{hm(b.t)}</b><span>{b.txt}</span><span>{away(b.t)}</span></li>)}</ul></div>
+
+  // ---- E heti rend (hétfő–péntek, plusz a hétvége, ha van rendje) ----
+  const monday = addDays(z.date, 1 - z.weekday)
+  const week = [0, 1, 2, 3, 4, 5, 6].map(i => {
+    const date = addDays(monday, i), sch = pickSchedule(data.schedules, i + 1), ls = sch ? byPos(sch.lessons) : []
+    const off = (data.closed as { day: string; reason: string }[]).find(c => c.day === date)?.reason
+    return { date, i, dim: !!off || !ls.length, info: off ?? (ls.length ? `${ls.length} óra, ${fmtHM(ls[0].start_time)}–${fmtHM(ls[ls.length - 1].end_time)}` : 'Nincs tanítás') }
+  }).filter(w => w.i < 5 || !w.dim)
+
+  // ---- Közlemények (a TV-n 10 mp-enként váltakoznak) ----
+  const notes = ((data.announcements ?? []) as { id: string; text: string; active_until: string | null }[]).filter(n => !n.active_until || n.active_until >= z.date)
+  const note = notes.length ? notes[Math.floor(now.getTime() / 10000) % notes.length] : null
+
+  // ---- Visszaszámláló kártyák ----
+  const startDay = s.phase === 'after' || s.phase === 'closed' ? addDays(z.date, 1) : z.date
+  const evCard = (e: any, i: number) => {
+    const k = KIND[e.kind] ?? KIND.other
+    const d = Math.floor(e.left / 86400), h = Math.floor((e.left % 86400) / 3600), m = Math.floor((e.left % 3600) / 60), sec = e.left % 60
+    const nd = schoolDaysBetween(startDay, e.target_date, data.schedules, data.closed)
+    return <article key={e.id} className={`ev ${i === 0 ? 'big' : ''}`} style={{ '--k': k.color } as CSSProperties}>
+      <div className="ev-top"><span className="ico" aria-hidden="true">{k.icon}</span><h3>{e.title}</h3></div>
+      {i === 0
+        ? <div className="units">{([[d, 'nap'], [h, 'óra'], [m, 'perc'], [sec, 'mp']] as [number, string][]).map(([v, l]) => <div key={l}><Digits text={pad(v)} /><span>{l}</span></div>)}</div>
+        : <div className="days"><b>{d}</b><span>nap{h > 0 || d === 0 ? `, ${h} óra` : ''}</span></div>}
+      <div className="ev-date">{dayName(e.target_date, { weekday: 'long', month: 'long', day: 'numeric' })}{nd > 0 ? `, még ${nd} tanítási nap` : ''}</div>
+    </article>
+  }
+  const offCard = upcoming.length > 0 && <article key="off" className="ev" style={{ '--k': 'var(--mut)' } as CSSProperties}>
+    <div className="ev-top"><span className="ico" aria-hidden="true">📅</span><h3>Tanítás nélküli napok</h3></div>
+    <ul className="offl">{upcoming.map(c => <li key={c.day}><b>{dayName(c.day, { month: 'long', day: 'numeric' })}</b>
+      <span>{dayName(c.day, { weekday: 'long' })}, {c.reason}</span></li>)}</ul>
+  </article>
+
   return <main className={tv ? 'tv' : ''}>
     <header>
       <span className="brand">{data.settings.logo_url && <img className="logo" src={data.settings.logo_url} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />}{data.name}</span>
@@ -116,11 +184,16 @@ export default function App() {
       </div>
     </header>
 
+    {!tv && stats && <section className="panel overview full"><div className="tag">A nap egy pillantásra</div>{stats}{strip}</section>}
+
     <section className={`panel now ${s.phase}`}>
       <div className="tag">Most</div>
       <Ring s={s} />
       {(!tv || data.settings.tv_show_next) && (pv && first ? <NextDay label={dayName(pv.date, { weekday: 'long' })} time={fmtHM(first.start_time)} until={until} /> : <Next s={s} secs={z.secs} />)}
+      {!tv && bells}
     </section>
+
+    {tv && <section className="tvside">{T.length > 0 ? <>{bells}{stats}</> : <>{events[0] && evCard(events[0], 0)}{offCard}</>}</section>}
 
     {!tv && L.length > 0 && <section className="panel board">
       <div className="tag">{s.phase === 'closed' ? 'Következő tanítási nap' : 'Mai napirend'}</div>
@@ -138,24 +211,19 @@ export default function App() {
       })}</ol>
     </section>}
 
-    {!tv && (events.length > 0 || upcoming.length > 0) && <section className="events">
+    {!tv && notes.length > 0 && <section className="panel full"><div className="tag">Közlemények</div>
+      {notes.slice(0, 4).map(n => <p className="notice" key={n.id}>{n.text}</p>)}</section>}
+
+    {!tv && <section className="panel full"><div className="tag">E heti rend</div>
+      <div className="week">{week.map(w => <div key={w.date} className={`wd ${w.date === z.date ? 'today' : ''} ${w.dim ? 'off' : ''}`}>
+        <b>{dayName(w.date, { weekday: 'long' })}</b><small>{dayName(w.date, { month: 'long', day: 'numeric' })}</small><span>{w.info}</span></div>)}</div></section>}
+
+    {!tv && (events.length > 0 || offCard) && <section className="events">
       <div className="tag wide">Közelgő szünetek és ünnepek</div>
-      {events.map((e, i) => {
-        const k = KIND[e.kind] ?? KIND.other
-        const d = Math.floor(e.left / 86400), h = Math.floor((e.left % 86400) / 3600), m = Math.floor((e.left % 3600) / 60), sec = e.left % 60
-        return <article key={e.id} className={`ev ${i === 0 ? 'big' : ''}`} style={{ '--k': k.color } as CSSProperties}>
-          <div className="ev-top"><span className="ico" aria-hidden="true">{k.icon}</span><h3>{e.title}</h3></div>
-          {i === 0
-            ? <div className="units">{([[d, 'nap'], [h, 'óra'], [m, 'perc'], [sec, 'mp']] as [number, string][]).map(([v, l]) => <div key={l}><Digits text={pad(v)} /><span>{l}</span></div>)}</div>
-            : <div className="days"><b>{d}</b><span>nap{h > 0 || d === 0 ? `, ${h} óra` : ''}</span></div>}
-          <div className="ev-date">{dayName(e.target_date, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
-        </article>
-      })}
-      {upcoming.length > 0 && <article className="ev" style={{ '--k': 'var(--mut)' } as CSSProperties}>
-        <div className="ev-top"><span className="ico" aria-hidden="true">📅</span><h3>Tanítás nélküli napok</h3></div>
-        <ul className="offl">{upcoming.map(c => <li key={c.day}><b>{dayName(c.day, { month: 'long', day: 'numeric' })}</b>
-          <span>{dayName(c.day, { weekday: 'long' })}, {c.reason}</span></li>)}</ul>
-      </article>}
+      {events.map(evCard)}{offCard}
     </section>}
+
+    {tv && strip && <div className="stripbox">{strip}</div>}
+    {tv && note && <section className="ticker"><span>Közlemény</span><p key={note.id} className="flash">{note.text}</p></section>}
   </main>
 }

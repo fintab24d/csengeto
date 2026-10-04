@@ -1,6 +1,6 @@
 // Futtatás: npm run check  (Node 22.6+). Az időlogikát ellenőrzi, hálózat nélkül.
 import assert from 'node:assert/strict'
-import { computeState, instantOf, nextSchoolDay, pickSchedule, zoned, type Lesson, type Schedule } from '../src/lib/engine.ts'
+import { computeState, instantOf, nextSchoolDay, pickSchedule, schoolDaysBetween, zoned, type Lesson, type Schedule } from '../src/lib/engine.ts'
 
 const A = [['08:00','08:45'],['08:55','09:40'],['09:50','10:35'],['10:45','11:30'],['11:40','12:25'],['12:35','13:20'],['13:30','14:15'],['14:25','15:10']]
 const lessons: Lesson[] = A.map(([s, e], i) => ({ id: `l${i + 1}`, label: `${i + 1}. óra`, start_time: s, end_time: e, position: i + 1 }))
@@ -34,4 +34,7 @@ ok('visszaszámlálás pontos a tavaszi óraátállás fölött (42 óra)', () =
   assert.equal(Math.round((instantOf('2026-03-30', 8 * 3600, 'Europe/Budapest') - Date.parse('2026-03-28T12:00:00Z')) / 1000), 42 * 3600))
 ok('visszaszámlálás pontos az őszi óraátállás fölött (43 óra)', () =>
   assert.equal(Math.round((instantOf('2026-10-26', 8 * 3600, 'Europe/Budapest') - Date.parse('2026-10-24T12:00:00Z')) / 1000), 43 * 3600))
+ok('tanítási napok száma: egy teljes hét = 5', () => assert.equal(schoolDaysBetween('2026-10-26', '2026-10-30', sch, []), 5))
+ok('tanítási napok száma: ünnepnap levonva', () => assert.equal(schoolDaysBetween('2026-10-26', '2026-10-30', sch, [{ day: '2026-10-28' }]), 4))
+ok('tanítási napok száma: hétvége = 0, fordított tartomány = 0', () => { assert.equal(schoolDaysBetween('2026-10-24', '2026-10-25', sch, []), 0); assert.equal(schoolDaysBetween('2026-10-26', '2026-10-25', sch, []), 0) })
 console.log(`TZ=${process.env.TZ ?? '(rendszer)'}: ${n} teszt OK`)

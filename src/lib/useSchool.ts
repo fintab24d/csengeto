@@ -9,6 +9,7 @@ export interface SchoolData {
   schedules: Schedule[]
   closed: { day: string; reason: string }[]
   countdowns: Countdown[]
+  announcements: { id: string; text: string; active_until: string | null }[]
 }
 const KEY = 'csengeto-cache-v1'
 const one = <T,>(x: T | T[]) => (Array.isArray(x) ? x[0] : x)
@@ -26,11 +27,11 @@ export function useSchool() {
     const load = async () => {
       const { data: row, error: err } = await supabase
         .from('schools')
-        .select('name, settings(*), schedules(*, lessons(*)), closed_days(day, reason), countdowns(*)')
+        .select('name, settings(*), schedules(*, lessons(*)), closed_days(day, reason), countdowns(*), announcements(*)')
         .eq('slug', SCHOOL_SLUG).single()
       if (!alive) return
       if (err || !row) { setOffline(true); setError(err?.message ?? 'Nincs adat'); return }
-      const d: SchoolData = { name: row.name, settings: one(row.settings as any), schedules: row.schedules as any, closed: row.closed_days as any, countdowns: (row as any).countdowns ?? [] }
+      const d: SchoolData = { name: row.name, settings: one(row.settings as any), schedules: row.schedules as any, closed: row.closed_days as any, countdowns: (row as any).countdowns ?? [], announcements: (row as any).announcements ?? [] }
       localStorage.setItem(KEY, JSON.stringify(d))
       setData(d); setOffline(false); setError(null)
     }

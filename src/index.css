@@ -82,16 +82,45 @@ button:focus-visible{outline:2px solid var(--next);outline-offset:2px}
 @media(min-width:960px){
   header{grid-template-columns:1fr auto 1fr}.timebox{grid-column:auto;order:0}.tools{justify-self:end}
   main:not(.tv){grid-template-columns:minmax(0,5fr) minmax(0,4fr);align-items:start}
-  main:not(.tv)>header,.events{grid-column:1/-1}
+  main:not(.tv)>header,main:not(.tv)>.full,.events{grid-column:1/-1}
 }
 /* TV-mód: csak a lényeg, hatalmas méretben */
 main.tv{max-width:none;align-content:center;gap:2vh}
 .tv header{grid-template-columns:1fr;justify-items:center;gap:1.5vh}.tv .tools{justify-self:center}
 .tv .timebox .digits{font-size:min(15vh,17vw)}.tv .date{font-size:3vh}
-.tv .panel{background:none;border:0}.tv .tag{display:none}.tv .ring{width:min(46vh,86vw)}.tv .next{font-size:3vh;width:auto}.tv .next b{font-size:4vh}
+.tv .panel{background:none;border:0}.tv .now>.tag{display:none}.tv .ring{width:min(46vh,86vw)}.tv .next{font-size:3vh;width:auto}.tv .next b{font-size:4vh}
 @media(prefers-reduced-motion:reduce){.flash,.count.soon .tile{animation:none}.arc,body::before{transition:none}}
 
 /* Admin */
 .admin{max-width:760px;display:block}.admin section{margin:0 0 28px}.admin h2{margin:0 0 10px;font-size:1.1rem}
 .admin input,.admin select{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;max-width:100%}
 .admin .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}.admin .on{border-color:var(--lesson)}.admin .msg{color:var(--break);min-height:1.2em}
+
+/* Áttekintő sor, napsáv, csengetések, heti rend, közlemények */
+.overview{display:grid;gap:16px}.overview .tag{margin:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{display:grid;gap:2px;padding:12px 14px;border:1px solid var(--line);border-radius:12px}
+.stat b{font:700 2.2rem/1.05 var(--f)}.stat span{color:var(--mut);font-size:.85rem}
+.strip .bar{position:relative;height:46px;border-radius:10px;background:color-mix(in srgb,var(--break) 18%,transparent)}
+.seg{position:absolute;top:0;bottom:0;display:grid;place-items:center;font:600 1.2rem var(--f);font-style:normal;background:color-mix(in srgb,var(--lesson) 32%,transparent);border-radius:6px}
+.seg.past{opacity:.35}.seg.on{background:var(--lesson);color:#000}
+.mark{position:absolute;top:-5px;bottom:-5px;width:3px;margin-left:-1px;background:var(--fg);border-radius:2px;transition:left 1s linear}
+.ends{display:flex;justify-content:space-between;margin-top:6px;color:var(--mut);font:500 1rem var(--f)}
+.bells{width:100%;margin-top:16px}.bells .tag{margin-bottom:8px}
+.bells ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.bells li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:baseline;padding:8px 12px;border-radius:10px;background:color-mix(in srgb,var(--fg) 5%,transparent)}
+.bells li:first-child{outline:1px solid var(--a,var(--line))}.bells b{font:600 1.6rem var(--f)}.bells span{color:var(--mut)}
+.week{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.wd{display:grid;gap:2px;padding:12px 14px;border:1px solid var(--line);border-radius:12px}
+.wd b{font:600 1.5rem var(--f)}.wd b::first-letter{text-transform:uppercase}.wd small,.wd span{color:var(--mut)}
+.wd.today{border-color:var(--lesson);background:color-mix(in srgb,var(--lesson) 10%,transparent)}.wd.off{opacity:.6}
+.notice{margin:0 0 8px;padding:12px 16px;border-left:4px solid var(--next);border-radius:10px;background:color-mix(in srgb,var(--next) 8%,transparent);font-size:1.1rem}
+.tvside:empty{display:none}.ticker{display:flex;gap:16px;align-items:center;padding:1.6vh 2vw;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.ticker span{font:600 1.1rem var(--f);letter-spacing:.16em;text-transform:uppercase;color:var(--next)}.ticker p{margin:0;font:600 4vh/1.15 var(--f)}
+@media(min-width:900px){
+  main.tv{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center}
+  .tv>header,.tv>.stripbox,.tv>.ticker{grid-column:1/-1}.tv .ring{width:min(42vh,40vw)}
+  .tvside{display:grid;gap:2vh}.tv .bells li{font-size:2.2vh}.tv .bells b{font-size:4.2vh}.tv .bells .tag{font-size:2vh}
+  .tv .stats{grid-template-columns:1fr 1fr}.tv .stat b{font-size:4.4vh}.tv .stat span{font-size:1.9vh}
+  .tv .strip .bar{height:6vh}.tv .seg{font-size:3vh}.tv .ends{font-size:2.4vh}
+}
