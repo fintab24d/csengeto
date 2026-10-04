@@ -1,9 +1,9 @@
 /* Stílus: "menetrend-tábla" + kockás füzet, neonzöld színséma, Google Sans betű. */
-:root{--bg:#040806;--panel:#0a130d;--fg:#e9ffef;--mut:#7ea58a;--line:#173020;--grid:rgba(57,255,122,.055);
---lesson:#39ff7a;--break:#2ee6d6;--next:#d4ff3a;--tile:#020503;--tilefg:#39ff7a;--glow:transparent;
+:root{--bg:#040806;--panel:#0b1810;--fg:#e9ffef;--mut:#86b394;--line:#244a31;--edge:#3d8a58;--key:#143022;color-scheme:dark;--grid:rgba(57,255,122,.055);
+--lesson:#39ff7a;--break:#2ee6d6;--next:#d4ff3a;--tile:#0e2016;--tilefg:#39ff7a;--glow:transparent;
 --f:"Google Sans","Google Sans Flex",system-ui,"Segoe UI",sans-serif}
 [data-theme=light]{--bg:#effff4;--panel:#fff;--fg:#06210f;--mut:#4a6b57;--line:#c9e6d3;--grid:rgba(0,168,68,.10);
---lesson:#00a844;--break:#00857a;--next:#6a8f00;--tile:#06210f;--tilefg:#39ff7a}
+--lesson:#00a844;--break:#00857a;--next:#6a8f00;--tile:#06210f;--tilefg:#39ff7a;--edge:#8cc9a2;--key:#fff;color-scheme:light}
 [data-phase=lesson]{--glow:color-mix(in srgb,var(--lesson) 13%,transparent)}
 [data-phase=break]{--glow:color-mix(in srgb,var(--break) 14%,transparent)}
 [data-phase=before]{--glow:color-mix(in srgb,var(--next) 12%,transparent)}
@@ -166,3 +166,15 @@ button:hover:not(:disabled){box-shadow:0 5px 0 var(--line),0 0 18px -4px var(--l
 .stat b{font-size:1.7rem}.bells b{font-size:1.3rem}.wd b{font-size:1.15rem}.next b{font-size:1.3rem}
 .ev h3{font-size:1.25rem}.days b{font-size:2.8rem}.offl b{font-size:1.2rem}.seg{font-size:1rem}.ends{font-size:.9rem}
 .timebox .digits{font-size:clamp(2.4rem,11vw,4.2rem)}
+
+/* Sötét téma: láthatóság javítása (erősebb szegélyek, látható gombok és beviteli mezők, élesebb csempék) */
+button{background:var(--key);border-color:var(--edge);box-shadow:0 3px 0 var(--edge)}
+button:hover:not(:disabled){box-shadow:0 5px 0 var(--edge),0 0 18px -4px var(--lesson)}
+button:active:not(:disabled){box-shadow:0 0 0 var(--edge)}
+@keyframes nudge{0%,100%{box-shadow:0 3px 0 var(--edge),0 0 0 0 color-mix(in srgb,var(--lesson) 55%,transparent)}50%{box-shadow:0 3px 0 var(--edge),0 0 0 9px transparent}}
+.admin input,.admin select{background:var(--key);border-color:var(--edge)}
+.tile{border:1px solid color-mix(in srgb,var(--tilefg) 30%,transparent)}.tile::after{background:rgba(0,0,0,.75)}
+.ticks{opacity:.65}.strip .bar{box-shadow:inset 0 0 0 1px var(--line)}
+.l.past,.seg.past{opacity:.55}.wd.off{opacity:.72}
+.panel,.stat,.wd,.ev,.ticker{border-color:var(--line)}
+[data-theme=dark] .logo{background:rgba(255,255,255,.92);padding:3px 7px;border-radius:8px}
