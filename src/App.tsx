@@ -7,6 +7,7 @@ import { computeState, fmtCount, fmtHM, addDays, instantOf, nextSchoolDay, pickS
 const pad = (n: number) => String(n).padStart(2, '0')
 const hms = (s: number) => `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`
 const TITLE: Record<BellState['phase'], string> = { closed: '', before: 'Tanítás előtt', lesson: '', break: 'Szünet', after: 'Vége a tanításnak' }
+const STYLES = [['neon', 'Neon'], ['school', 'Iskolai'], ['minimal', 'Minimál']] as const
 const CHIP: Record<string, string> = { past: 'vége', now: 'most', upnext: 'következő' }
 
 /** Számjegyek "menetrend-tábla" csempékben (ez az oldal vizuális aláírása). */
@@ -37,7 +38,8 @@ function Ring({ s }: { s: BellState }) {
   const title = s.phase === 'lesson' ? s.current!.label : s.phase === 'closed' ? s.reason : TITLE[s.phase]
   return <div className={`ring ${s.phase}`}>
     <svg viewBox="0 0 200 200" aria-hidden="true">
-      <circle className="ticks" cx="100" cy="100" r="96" />
+      <defs><linearGradient id="ledg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ff3fb8" /><stop offset=".3" stopColor="#ffb02e" /><stop offset=".5" stopColor="#39ff7a" /><stop offset=".75" stopColor="#2de2ff" /><stop offset="1" stopColor="#8a5cff" /></linearGradient></defs>
+      <circle className="ticks" cx="100" cy="100" r="96" stroke="url(#ledg)" />
       <circle className="track" cx="100" cy="100" r={R} />
       {live && <circle className="arc" cx="100" cy="100" r={R} strokeDasharray={C} strokeDashoffset={C * (1 - s.progress)} />}
     </svg>
@@ -88,6 +90,9 @@ export default function App() {
   const { data, offline, z, schedule, state, now } = useBell() as any
   const tv = location.pathname.startsWith('/display')
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') ?? '')
+  // Stílus: a fejlécben váltható; a /display?style=school alakú cím a TV-nek is beállítja
+  const [style, setStyle] = useState(() => { const v = new URLSearchParams(location.search).get('style') ?? localStorage.getItem('style') ?? 'neon'; return STYLES.some(s => s[0] === v) ? v : 'neon' })
+  useEffect(() => { document.documentElement.dataset.style = style; localStorage.setItem('style', style) }, [style])
   useEffect(() => { document.documentElement.dataset.theme = theme || data?.settings.theme || 'dark' }, [theme, data])
   useEffect(() => { document.documentElement.dataset.phase = state?.phase ?? '' }, [state?.phase])
   useEffect(() => { document.title = data ? data.name : 'Csengetés' }, [data])
@@ -181,6 +186,7 @@ export default function App() {
       <div className="tools">
         {offline && <span className="pill">Offline mód</span>}
         {data.settings.sound_enabled && !audioOn && <button className="cta" onClick={async () => setAudioOn(await enableAudio())}>Hang engedélyezése</button>}
+        {!tv && <div className="styles" role="group" aria-label="Stílus">{STYLES.map(([k, n]) => <button key={k} className={style === k ? 'on' : ''} aria-pressed={style === k} onClick={() => setStyle(k)}>{n}</button>)}</div>}
         {!tv && <button onClick={() => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('theme', t); setTheme(t) }}>Téma</button>}
       </div>
     </header>

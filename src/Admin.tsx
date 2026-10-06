@@ -16,6 +16,19 @@ const ZONES = ['Europe/Budapest', 'Europe/Bratislava', 'Europe/Vienna', 'Europe/
 const p2 = (n: number) => String(n).padStart(2, '0')
 const plus = (t: string, m: number) => { const s = Math.min(86340, toSec(t) + m * 60); return `${p2(Math.floor(s / 3600))}:${p2(Math.floor(s / 60) % 60)}` }
 
+const TABLE: Record<string, string> = { schools: 'Iskola', settings: 'Beállítások', schedules: 'Csengetési rend', lessons: 'Óra', closed_days: 'Tanítás nélküli nap', countdowns: 'Visszaszámláló', announcements: 'Közlemény', school_members: 'Admin jogosultság' }
+const ACT: Record<string, string> = { INSERT: 'létrehozott', UPDATE: 'módosított', DELETE: 'törölt' }
+const FIELD: Record<string, string> = { name: 'név', label: 'megnevezés', start_time: 'kezdés', end_time: 'vége', title: 'cím', text: 'szöveg', day: 'nap', reason: 'indok', target_date: 'dátum', target_time: 'időpont', weekdays: 'napok', is_default: 'alapértelmezett', timezone: 'időzóna', theme: 'téma', sound_enabled: 'hang', logo_url: 'logó', tv_show_seconds: 'TV másodperc', tv_show_next: 'TV következő', tv_scale: 'TV méret', site_version: 'verzió', version_note: 'verzió megjegyzés', kind: 'fajta', active_until: 'eddig', position: 'sorrend' }
+const show = (v: unknown) => (v === null || v === undefined || v === '' ? '(üres)' : typeof v === 'boolean' ? (v ? 'be' : 'ki') : String(v).slice(0, 40))
+/** Rövid, olvasható leírás egy naplósorról (módosításnál: mező: régi → új). */
+const describe = (r: any) => {
+  const d = r.new_data ?? r.old_data ?? {}
+  const name = d.title ?? d.name ?? d.label ?? d.text ?? d.reason ?? d.day ?? ''
+  if (r.action !== 'UPDATE') return String(name)
+  const ch = Object.keys(r.new_data).filter(k => k !== 'created_at' && JSON.stringify(r.new_data[k]) !== JSON.stringify(r.old_data[k]))
+  return (name ? `${name}: ` : '') + ch.slice(0, 3).map(k => `${FIELD[k] ?? k}: ${show(r.old_data[k])} → ${show(r.new_data[k])}`).join('; ')
+}
+
 export default function Admin() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
   useEffect(() => {
@@ -61,6 +74,13 @@ function Panel() {
     setD({ ...r, settings: Array.isArray(r.settings) ? r.settings[0] : r.settings })
   }, [])
   useEffect(() => { load() }, [load])
+  // Módosítási napló: minden mentés után újratöltődik (a d állapot ilyenkor frissül)
+  const [log, setLog] = useState<any[] | null | undefined>(undefined)
+  useEffect(() => {
+    if (!d) return
+    supabase.from('audit_log').select('*').eq('school_id', d.id).order('created_at', { ascending: false }).limit(100)
+      .then(({ data, error }) => setLog(error ? null : data ?? []))
+  }, [d])
 
   if (!d) return <main className="admin">{msg || 'Betöltés…'}</main>
   if (!admin) return <main className="admin"><p>Ehhez a fiókhoz nincs admin jogosultság rendelve (lásd README 6. lépés).</p>
@@ -161,6 +181,14 @@ function Panel() {
       <div className="row"><input style={{ minWidth: '18rem' }} placeholder="Közlemény szövege" value={an.text} onChange={e => setAn({ ...an, text: e.target.value })} />
         <input type="date" title="Meddig látszódjon (üres = amíg törlöd)" value={an.until} onChange={e => setAn({ ...an, until: e.target.value })} />
         <button disabled={!an.text} onClick={async () => { await run(supabase.from('announcements').insert({ school_id: d.id, text: an.text, active_until: an.until || null })); setAn({ text: '', until: '' }) }}>Hozzáadás</button></div>
+    </section>
+
+    <section><h2>Módosítási napló (utolsó 100)</h2>
+      {log === null && <p>A napló még nincs bekapcsolva: futtasd le a <code>supabase/update5.sql</code> fájlt.</p>}
+      {log && log.length === 0 && <p>Még nincs bejegyzés.</p>}
+      <ul className="audit">{(log ?? []).map(r => <li key={r.id}>
+        <time>{new Date(r.created_at).toLocaleString('hu-HU', { timeZone: 'Europe/Budapest', dateStyle: 'short', timeStyle: 'medium' })}</time>
+        <b>{r.user_email ?? 'SQL / rendszer'}</b><span>{ACT[r.action]} ({TABLE[r.table_name] ?? r.table_name})</span><em>{describe(r)}</em></li>)}</ul>
     </section>
   </main>
 }
