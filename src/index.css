@@ -258,3 +258,5 @@ html:is([data-style=school],[data-style=minimal])::after,
 @keyframes fadein{from{opacity:0}}@keyframes pulseb{50%{box-shadow:0 0 90px -4px var(--next)}}
 .tv>.chg{grid-column:1/-1}.tv .chg li{font-size:2.4vh}.tv .chg b{font-size:3.2vh}.tv .alertbox p{font-size:9vh}.tv .lunch p{font-size:2.6vh}
 @media(prefers-reduced-motion:reduce){.alertbox,.alertfs,.yearbar i{animation:none}}
+.wx{display:flex;flex-wrap:wrap;gap:2px 10px;justify-content:center;align-items:baseline}.wx b{font-weight:600}.wx small{color:var(--mut);font-size:.9rem}
+.tv .wx{font-size:3vh}.tv .wx small{font-size:2.2vh}

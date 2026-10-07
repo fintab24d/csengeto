@@ -70,6 +70,31 @@ function NextDay({ label, time, until }: { label: string; time: string; until: n
   return <div className="next nextday"><span>Legközelebb</span><b>{label}, {time}</b><span>még {left}</span></div>
 }
 
+/** WMO időjárási kód → ikon és magyar leírás */
+const WX = (c: number): [string, string] => c === 0 ? ['☀️', 'Derült'] : c <= 2 ? ['🌤️', 'Részben felhős'] : c === 3 ? ['☁️', 'Borult'] : c <= 48 ? ['🌫️', 'Ködös']
+  : c <= 57 ? ['🌦️', 'Szitálás'] : c <= 67 ? ['🌧️', 'Eső'] : c <= 77 ? ['❄️', 'Havazás'] : c <= 82 ? ['🌦️', 'Zápor'] : c <= 86 ? ['🌨️', 'Hózápor'] : ['⛈️', 'Zivatar']
+
+/** Aktuális időjárás az Open-Meteo-ból (30 percenként frissül; offline esetén az utolsó adat marad). */
+function useWeather(lat: number | null, lon: number | null, tz: string | undefined, on: boolean) {
+  const [w, setW] = useState<any>(() => { try { return JSON.parse(localStorage.getItem('csengeto-weather') ?? 'null') } catch { return null } })
+  useEffect(() => {
+    if (!on || lat == null || lon == null || !tz) return
+    let alive = true
+    const load = async () => {
+      try {
+        const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=${encodeURIComponent(tz)}&forecast_days=1`)
+        if (!r.ok || !alive) return
+        const j = await r.json()
+        const v = { t: Math.round(j.current.temperature_2m), c: j.current.weather_code, min: Math.round(j.daily.temperature_2m_min[0]), max: Math.round(j.daily.temperature_2m_max[0]), p: j.daily.precipitation_probability_max[0] ?? 0, lat, lon }
+        localStorage.setItem('csengeto-weather', JSON.stringify(v)); if (alive) setW(v)
+      } catch { /* nincs net: marad a legutóbbi adat */ }
+    }
+    load(); const t = setInterval(load, 30 * 60_000)
+    return () => { alive = false; clearInterval(t) }
+  }, [lat, lon, tz, on])
+  return on && w && w.lat === lat && w.lon === lon ? w : null
+}
+
 /** A tanítási nap sávja: az órák és szünetek arányosan, a pillanatnyi időt jelző vonallal. */
 function DayStrip({ L, secs, phase }: { L: any[]; secs: number; phase: BellState['phase'] }) {
   const a = toSec(L[0].start_time), b = toSec(L[L.length - 1].end_time), span = b - a
@@ -101,6 +126,7 @@ export default function App() {
   // Csengetési hang: állapotváltáskor szól, ha az admin bekapcsolta és a hang engedélyezve van.
   const [audioOn, setAudioOn] = useState(audioReady())
   const [dismissed, setDismissed] = useState('')   // a kiemelt közleményt a látogató bezárhatja (a TV-n nem)
+  const wx = useWeather(data?.settings.weather_lat ?? null, data?.settings.weather_lon ?? null, data?.settings.timezone, !!data?.settings.weather_enabled)
   const key = state ? `${state.phase}-${state.current?.id ?? state.next?.id}` : ''
   const prev = useRef('')
   useEffect(() => {
@@ -204,6 +230,7 @@ export default function App() {
       <div className="timebox">
         <Digits text={tv && !data.settings.tv_show_seconds ? hms(z.secs).slice(0, 5) : hms(z.secs)} />
         <div className="date">{dateText}</div>
+        {wx && <div className="wx"><span aria-hidden="true">{WX(wx.c)[0]}</span><b>{wx.t}°C, {WX(wx.c)[1]}</b><small>{data.settings.weather_city}, ma {wx.min}–{wx.max}°C, csapadék {wx.p}%</small></div>}
       </div>
       <div className="tools">
         {offline && <span className="pill">Offline mód</span>}

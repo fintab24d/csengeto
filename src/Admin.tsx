@@ -7,7 +7,7 @@ import { KIND, type Countdown } from './lib/kinds'
 
 interface Full {
   id: string; name: string
-  settings: { timezone: string; theme: string; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number; site_version: string; version_note: string; alert_text: string; alert_active: boolean; lunch_after: number | null; year_start: string | null; year_end: string | null }
+  settings: { timezone: string; theme: string; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number; site_version: string; version_note: string; alert_text: string; alert_active: boolean; lunch_after: number | null; year_start: string | null; year_end: string | null; weather_enabled: boolean; weather_city: string; weather_lat: number | null; weather_lon: number | null }
   countdowns: Countdown[]; announcements: { id: string; text: string; active_until: string | null }[]; schedule_dates: { id: string; day: string; schedule_id: string }[]; changes: { id: string; day: string; kind: string; lesson_label: string; text: string }[]; menus: { id: string; day: string; text: string }[]; schedules: Schedule[]; closed_days: { id: string; day: string; reason: string }[]
 }
 type Res = PromiseLike<{ error: { message: string } | null }>
@@ -69,6 +69,8 @@ function Panel() {
   const [sd, setSd] = useState({ day: '', schedule_id: '' })
   const [chg, setChg] = useState({ day: todayStr, kind: 'cancel', lesson_label: '', text: '' })
   const [mn, setMn] = useState({ day: todayStr, text: '' })
+  const [wq, setWq] = useState('')
+  const [wres, setWres] = useState<any[]>([])
 
   const load = useCallback(async () => {
     const m = await supabase.from('school_members').select('school_id')
@@ -123,6 +125,14 @@ function Panel() {
     const hm = (s: number) => `${p2(Math.floor(s / 3600))}:${p2(Math.floor(s / 60) % 60)}`
     const rows = lessons.map(l => { const s = t; t += len * 60; const r = { schedule_id: data.id, label: l.label, position: l.position, start_time: hm(s), end_time: hm(t) }; t += br * 60; return r })
     await run(supabase.from('lessons').insert(rows)); setSel(data.id)
+  }
+
+  // Város keresése (Open-Meteo geokódoló): a találatra kattintva mentődik a hely
+  const searchCity = async () => {
+    try {
+      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(wq.trim())}&count=5&language=hu&format=json`)
+      const j = await r.json(); setWres(j.results ?? []); if (!j.results) setMsg('Nincs találat.')
+    } catch { setMsg('A városkeresés most nem érhető el.') }
   }
 
   const upload = async (f: File) => {
@@ -235,6 +245,13 @@ function Panel() {
         <label><input type="checkbox" checked={d.settings.alert_active} onChange={e => setS({ alert_active: e.target.checked })} /> Megjelenítés az egész képernyőn</label></div>
       <div className="row">Tanév kezdete <input type="date" value={d.settings.year_start ?? ''} onChange={e => setS({ year_start: e.target.value || null })} />
         vége <input type="date" value={d.settings.year_end ?? ''} onChange={e => setS({ year_end: e.target.value || null })} /></div>
+    </section>
+
+    <section><h2>Időjárás a kijelzőn</h2>
+      <div className="row"><label><input type="checkbox" checked={d.settings.weather_enabled} onChange={e => setS({ weather_enabled: e.target.checked })} /> Megjelenítés</label> Jelenlegi hely: <b>{d.settings.weather_city}</b></div>
+      <div className="row"><input placeholder="Város keresése (pl. Szekszárd)" value={wq} onChange={e => setWq(e.target.value)} />
+        <button disabled={!wq.trim()} onClick={searchCity}>Keresés</button></div>
+      <div className="row">{wres.map((r, i) => <button key={i} onClick={() => { setS({ weather_city: r.name, weather_lat: r.latitude, weather_lon: r.longitude }); setWres([]); setWq('') }}>{r.name}{r.admin1 ? `, ${r.admin1}` : ''} ({r.country})</button>)}</div>
     </section>
 
     <section><h2>Módosítási napló (utolsó 100)</h2>
