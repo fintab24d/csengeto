@@ -59,11 +59,11 @@ const dayNum = (d: string) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.sl
 export const addDays = (d: string, n: number) => new Date((dayNum(d) + n) * 86400000).toISOString().slice(0, 10)
 
 /** A következő nap (legfeljebb 60 napon belül), amelyen van csengetési rend és nincs zárva az iskola. */
-export function nextSchoolDay(today: string, schedules: Schedule[], closed: { day: string }[]) {
+export function nextSchoolDay(today: string, schedules: Schedule[], closed: { day: string }[], overrides: Record<string, string> = {}) {
   for (let i = 1; i <= 60; i++) {
     const date = addDays(today, i)
     const weekday = ((new Date(dayNum(date) * 86400000).getUTCDay() + 6) % 7) + 1
-    const schedule = pickSchedule(schedules, weekday)
+    const schedule = scheduleFor(date, schedules, overrides)
     if (schedule && schedule.lessons.length > 0 && !closed.some(c => c.day === date)) return { date, weekday, schedule }
   }
 }
@@ -77,11 +77,17 @@ export function instantOf(date: string, secs: number, tz: string) {
 
 export const weekdayOf = (d: string) => ((new Date(dayNum(d) * 86400000).getUTCDay() + 6) % 7) + 1
 /** Tanítási napok száma [from, to] között (mindkét végpont beleszámít). */
-export function schoolDaysBetween(from: string, to: string, schedules: Schedule[], closed: { day: string }[]) {
+export function schoolDaysBetween(from: string, to: string, schedules: Schedule[], closed: { day: string }[], overrides: Record<string, string> = {}) {
   let n = 0
   for (let d = from, i = 0; d <= to && i < 800; d = addDays(d, 1), i++) {
-    const sch = pickSchedule(schedules, weekdayOf(d))
+    const sch = scheduleFor(d, schedules, overrides)
     if (sch && sch.lessons.length > 0 && !closed.some(c => c.day === d)) n++
   }
   return n
+}
+
+/** Az adott dátum rendje: ha az adminban konkrét napra rendeltek rendet, az az erősebb; különben a hét napja szerinti. */
+export function scheduleFor(date: string, schedules: Schedule[], overrides: Record<string, string> = {}) {
+  const id = overrides[date]
+  return (id ? schedules.find(s => s.id === id) : undefined) ?? pickSchedule(schedules, weekdayOf(date))
 }

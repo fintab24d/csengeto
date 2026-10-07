@@ -7,8 +7,8 @@ import { KIND, type Countdown } from './lib/kinds'
 
 interface Full {
   id: string; name: string
-  settings: { timezone: string; theme: string; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number; site_version: string; version_note: string }
-  countdowns: Countdown[]; announcements: { id: string; text: string; active_until: string | null }[]; schedules: Schedule[]; closed_days: { id: string; day: string; reason: string }[]
+  settings: { timezone: string; theme: string; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number; site_version: string; version_note: string; alert_text: string; alert_active: boolean; lunch_after: number | null; year_start: string | null; year_end: string | null }
+  countdowns: Countdown[]; announcements: { id: string; text: string; active_until: string | null }[]; schedule_dates: { id: string; day: string; schedule_id: string }[]; changes: { id: string; day: string; kind: string; lesson_label: string; text: string }[]; menus: { id: string; day: string; text: string }[]; schedules: Schedule[]; closed_days: { id: string; day: string; reason: string }[]
 }
 type Res = PromiseLike<{ error: { message: string } | null }>
 const DAYS = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V']
@@ -16,7 +16,7 @@ const ZONES = ['Europe/Budapest', 'Europe/Bratislava', 'Europe/Vienna', 'Europe/
 const p2 = (n: number) => String(n).padStart(2, '0')
 const plus = (t: string, m: number) => { const s = Math.min(86340, toSec(t) + m * 60); return `${p2(Math.floor(s / 3600))}:${p2(Math.floor(s / 60) % 60)}` }
 
-const TABLE: Record<string, string> = { schools: 'Iskola', settings: 'Beállítások', schedules: 'Csengetési rend', lessons: 'Óra', closed_days: 'Tanítás nélküli nap', countdowns: 'Visszaszámláló', announcements: 'Közlemény', school_members: 'Admin jogosultság' }
+const TABLE: Record<string, string> = { schools: 'Iskola', settings: 'Beállítások', schedules: 'Csengetési rend', lessons: 'Óra', closed_days: 'Tanítás nélküli nap', countdowns: 'Visszaszámláló', announcements: 'Közlemény', school_members: 'Admin jogosultság', schedule_dates: 'Különleges nap', changes: 'Változás', menus: 'Étlap' }
 const ACT: Record<string, string> = { INSERT: 'létrehozott', UPDATE: 'módosított', DELETE: 'törölt' }
 const FIELD: Record<string, string> = { name: 'név', label: 'megnevezés', start_time: 'kezdés', end_time: 'vége', title: 'cím', text: 'szöveg', day: 'nap', reason: 'indok', target_date: 'dátum', target_time: 'időpont', weekdays: 'napok', is_default: 'alapértelmezett', timezone: 'időzóna', theme: 'téma', sound_enabled: 'hang', logo_url: 'logó', tv_show_seconds: 'TV másodperc', tv_show_next: 'TV következő', tv_scale: 'TV méret', site_version: 'verzió', version_note: 'verzió megjegyzés', kind: 'fajta', active_until: 'eddig', position: 'sorrend' }
 const show = (v: unknown) => (v === null || v === undefined || v === '' ? '(üres)' : typeof v === 'boolean' ? (v ? 'be' : 'ki') : String(v).slice(0, 40))
@@ -28,6 +28,9 @@ const describe = (r: any) => {
   const ch = Object.keys(r.new_data).filter(k => k !== 'created_at' && JSON.stringify(r.new_data[k]) !== JSON.stringify(r.old_data[k]))
   return (name ? `${name}: ` : '') + ch.slice(0, 3).map(k => `${FIELD[k] ?? k}: ${show(r.old_data[k])} → ${show(r.new_data[k])}`).join('; ')
 }
+
+const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Budapest' })
+const CHG: Record<string, string> = { cancel: 'Elmarad', substitute: 'Helyettesítés', room: 'Teremváltás', info: 'Info' }
 
 export default function Admin() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -63,12 +66,15 @@ function Panel() {
   const [cd, setCd] = useState({ day: '', reason: '' })
   const [ev, setEv] = useState({ title: '', kind: 'other', date: '', time: '00:00' })
   const [an, setAn] = useState({ text: '', until: '' })
+  const [sd, setSd] = useState({ day: '', schedule_id: '' })
+  const [chg, setChg] = useState({ day: todayStr, kind: 'cancel', lesson_label: '', text: '' })
+  const [mn, setMn] = useState({ day: todayStr, text: '' })
 
   const load = useCallback(async () => {
     const m = await supabase.from('school_members').select('school_id')
     setAdmin(!!m.data?.length)
     const { data, error } = await supabase.from('schools')
-      .select('id, name, settings(*), schedules(*, lessons(*)), closed_days(*), countdowns(*), announcements(*)').eq('slug', SCHOOL_SLUG).single()
+      .select('id, name, settings(*), schedules(*, lessons(*)), closed_days(*), countdowns(*), announcements(*), schedule_dates(*), changes(*), menus(*)').eq('slug', SCHOOL_SLUG).single()
     if (error || !data) return setMsg('Hiba: ' + (error?.message ?? 'nincs adat'))
     const r = data as any
     setD({ ...r, settings: Array.isArray(r.settings) ? r.settings[0] : r.settings })
@@ -104,6 +110,19 @@ function Panel() {
     const last = lessons[lessons.length - 1]
     const start = last ? plus(last.end_time, 10) : '08:00'
     run(supabase.from('lessons').insert({ schedule_id: cur!.id, label: `${lessons.length + 1}. óra`, start_time: start, end_time: plus(start, 45), position: (last?.position ?? 0) + 1 }))
+  }
+
+  // Rövidített rend: a kiválasztott rendből új rendet készít, megadott óra- és szünethosszal
+  const makeShort = async () => {
+    if (!cur || !lessons.length) return
+    const len = Number(prompt('Hány perces legyen egy óra?', '35')), br = Number(prompt('Hány perces legyen a szünet?', '5'))
+    if (!len || !br) return
+    const { data, error } = await supabase.from('schedules').insert({ school_id: d.id, name: `${cur.name} – rövidített` }).select('id').single()
+    if (error) return setMsg('Hiba: ' + error.message)
+    let t = toSec(lessons[0].start_time)
+    const hm = (s: number) => `${p2(Math.floor(s / 3600))}:${p2(Math.floor(s / 60) % 60)}`
+    const rows = lessons.map(l => { const s = t; t += len * 60; const r = { schedule_id: data.id, label: l.label, position: l.position, start_time: hm(s), end_time: hm(t) }; t += br * 60; return r })
+    await run(supabase.from('lessons').insert(rows)); setSel(data.id)
   }
 
   const upload = async (f: File) => {
@@ -152,7 +171,7 @@ function Panel() {
           –<input type="time" defaultValue={fmtHM(l.end_time)} key={l.id + l.end_time} onBlur={e => e.target.value !== fmtHM(l.end_time) && run(supabase.from('lessons').update({ end_time: e.target.value }).eq('id', l.id))} />
           <button onClick={() => run(supabase.from('lessons').delete().eq('id', l.id))}>Törlés</button>
           {lessons[i + 1] && <em>szünet: {Math.round((toSec(lessons[i + 1].start_time) - toSec(l.end_time)) / 60)} perc</em>}</div>)}
-        <button onClick={addLesson}>+ Új óra</button>
+        <button onClick={addLesson}>+ Új óra</button> <button onClick={makeShort} disabled={!lessons.length}>Rövidített rend készítése ebből</button>
       </>}
     </section>
 
@@ -181,6 +200,41 @@ function Panel() {
       <div className="row"><input style={{ minWidth: '18rem' }} placeholder="Közlemény szövege" value={an.text} onChange={e => setAn({ ...an, text: e.target.value })} />
         <input type="date" title="Meddig látszódjon (üres = amíg törlöd)" value={an.until} onChange={e => setAn({ ...an, until: e.target.value })} />
         <button disabled={!an.text} onClick={async () => { await run(supabase.from('announcements').insert({ school_id: d.id, text: an.text, active_until: an.until || null })); setAn({ text: '', until: '' }) }}>Hozzáadás</button></div>
+    </section>
+
+    <section><h2>Különleges napok (adott napra más csengetési rend)</h2>
+      {[...(d.schedule_dates ?? [])].sort((a, b) => a.day.localeCompare(b.day)).map(x => <div className="row" key={x.id}>{x.day}: {d.schedules.find(s => s.id === x.schedule_id)?.name ?? '?'}
+        <button onClick={() => run(supabase.from('schedule_dates').delete().eq('id', x.id))}>Törlés</button></div>)}
+      <div className="row"><input type="date" value={sd.day} onChange={e => setSd({ ...sd, day: e.target.value })} />
+        <select value={sd.schedule_id} onChange={e => setSd({ ...sd, schedule_id: e.target.value })}><option value="">Válassz rendet…</option>{d.schedules.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
+        <button disabled={!sd.day || !sd.schedule_id} onClick={async () => { await run(supabase.from('schedule_dates').insert({ school_id: d.id, ...sd })); setSd({ day: '', schedule_id: '' }) }}>Hozzáadás</button></div>
+    </section>
+
+    <section><h2>Mai változások (elmaradó órák, helyettesítés, teremváltás)</h2>
+      {[...(d.changes ?? [])].sort((a, b) => b.day.localeCompare(a.day)).slice(0, 20).map(c => <div className="row" key={c.id}>{c.day}: {c.lesson_label} – {CHG[c.kind]} {c.text}
+        <button onClick={() => run(supabase.from('changes').delete().eq('id', c.id))}>Törlés</button></div>)}
+      <div className="row"><input type="date" value={chg.day} onChange={e => setChg({ ...chg, day: e.target.value })} />
+        <select value={chg.kind} onChange={e => setChg({ ...chg, kind: e.target.value })}>{Object.entries(CHG).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+        <input size={8} placeholder="pl. 7. óra" value={chg.lesson_label} onChange={e => setChg({ ...chg, lesson_label: e.target.value })} />
+        <input style={{ minWidth: '14rem' }} placeholder="pl. terem 12 → 15" value={chg.text} onChange={e => setChg({ ...chg, text: e.target.value })} />
+        <button disabled={!chg.day || !(chg.lesson_label || chg.text)} onClick={async () => { await run(supabase.from('changes').insert({ school_id: d.id, ...chg })); setChg({ ...chg, lesson_label: '', text: '' }) }}>Hozzáadás</button></div>
+    </section>
+
+    <section><h2>Étlap (a kijelzőn az adott napon látszik)</h2>
+      {[...(d.menus ?? [])].sort((a, b) => b.day.localeCompare(a.day)).slice(0, 14).map(m => <div className="row" key={m.id}>{m.day}: {m.text}
+        <button onClick={() => run(supabase.from('menus').delete().eq('id', m.id))}>Törlés</button></div>)}
+      <div className="row"><input type="date" value={mn.day} onChange={e => setMn({ ...mn, day: e.target.value })} />
+        <input style={{ minWidth: '18rem' }} placeholder="pl. Húsleves, rántott csirke, rizs" value={mn.text} onChange={e => setMn({ ...mn, text: e.target.value })} />
+        <button disabled={!mn.day || !mn.text} onClick={async () => { await run(supabase.from('menus').upsert({ school_id: d.id, ...mn }, { onConflict: 'school_id,day' })); setMn({ ...mn, text: '' }) }}>Mentés</button></div>
+      <div className="row">Ebédszünet: a(z) <input type="number" min={1} max={12} style={{ width: '4rem' }} defaultValue={d.settings.lunch_after ?? ''} key={'l' + d.settings.lunch_after}
+        onBlur={e => setS({ lunch_after: e.target.value ? Number(e.target.value) : null })} />. óra után</div>
+    </section>
+
+    <section><h2>Kiemelt közlemény (teljes képernyős) és tanév</h2>
+      <div className="row"><input style={{ minWidth: '22rem' }} placeholder="pl. Tűzriadó-gyakorlat 10:00-kor" defaultValue={d.settings.alert_text} key={'a' + d.settings.alert_text} onBlur={e => e.target.value !== d.settings.alert_text && setS({ alert_text: e.target.value })} />
+        <label><input type="checkbox" checked={d.settings.alert_active} onChange={e => setS({ alert_active: e.target.checked })} /> Megjelenítés az egész képernyőn</label></div>
+      <div className="row">Tanév kezdete <input type="date" value={d.settings.year_start ?? ''} onChange={e => setS({ year_start: e.target.value || null })} />
+        vége <input type="date" value={d.settings.year_end ?? ''} onChange={e => setS({ year_end: e.target.value || null })} /></div>
     </section>
 
     <section><h2>Módosítási napló (utolsó 100)</h2>

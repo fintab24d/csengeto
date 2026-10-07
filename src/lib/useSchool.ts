@@ -5,11 +5,14 @@ import type { Countdown } from './kinds'
 
 export interface SchoolData {
   name: string
-  settings: { timezone: string; theme: 'dark' | 'light'; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number; site_version: string; version_note: string }
+  settings: { timezone: string; theme: 'dark' | 'light'; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number; site_version: string; version_note: string; alert_text: string; alert_active: boolean; lunch_after: number | null; year_start: string | null; year_end: string | null }
   schedules: Schedule[]
   closed: { day: string; reason: string }[]
   countdowns: Countdown[]
   announcements: { id: string; text: string; active_until: string | null }[]
+  schedule_dates: { id: string; day: string; schedule_id: string }[]
+  changes: { id: string; day: string; kind: string; lesson_label: string; text: string }[]
+  menus: { id: string; day: string; text: string }[]
 }
 const KEY = 'csengeto-cache-v1'
 const one = <T,>(x: T | T[]) => (Array.isArray(x) ? x[0] : x)
@@ -27,11 +30,11 @@ export function useSchool() {
     const load = async () => {
       const { data: row, error: err } = await supabase
         .from('schools')
-        .select('name, settings(*), schedules(*, lessons(*)), closed_days(day, reason), countdowns(*), announcements(*)')
+        .select('name, settings(*), schedules(*, lessons(*)), closed_days(day, reason), countdowns(*), announcements(*), schedule_dates(*), changes(*), menus(*)')
         .eq('slug', SCHOOL_SLUG).single()
       if (!alive) return
       if (err || !row) { setOffline(true); setError(err?.message ?? 'Nincs adat'); return }
-      const d: SchoolData = { name: row.name, settings: one(row.settings as any), schedules: row.schedules as any, closed: row.closed_days as any, countdowns: (row as any).countdowns ?? [], announcements: (row as any).announcements ?? [] }
+      const d: SchoolData = { name: row.name, settings: one(row.settings as any), schedules: row.schedules as any, closed: row.closed_days as any, countdowns: (row as any).countdowns ?? [], announcements: (row as any).announcements ?? [], schedule_dates: (row as any).schedule_dates ?? [], changes: (row as any).changes ?? [], menus: (row as any).menus ?? [] }
       localStorage.setItem(KEY, JSON.stringify(d))
       setData(d); setOffline(false); setError(null)
     }

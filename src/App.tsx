@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } fr
 import { audioReady, enableAudio, ring } from './lib/sound'
 import { useSchool } from './lib/useSchool'
 import { KIND } from './lib/kinds'
-import { computeState, fmtCount, fmtHM, addDays, instantOf, nextSchoolDay, pickSchedule, schoolDaysBetween, toSec, zoned, type BellState } from './lib/engine'
+import { computeState, fmtCount, fmtHM, addDays, instantOf, nextSchoolDay, pickSchedule, scheduleFor, schoolDaysBetween, toSec, zoned, type BellState } from './lib/engine'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const hms = (s: number) => `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`
@@ -24,7 +24,8 @@ function useBell() {
   return useMemo(() => {
     if (!data) return { data, offline }
     const z = zoned(now, data.settings.timezone)
-    const schedule = pickSchedule(data.schedules, z.weekday)
+    const ov = Object.fromEntries((data.schedule_dates ?? []).map(x => [x.day, x.schedule_id]))
+    const schedule = scheduleFor(z.date, data.schedules, ov)
     const closed = data.closed.find(c => c.day === z.date)?.reason
     const state = computeState(z.secs, schedule?.lessons ?? [], closed, !schedule)
     return { data, offline, z, schedule, state, now }
@@ -99,6 +100,7 @@ export default function App() {
 
   // Csengetési hang: állapotváltáskor szól, ha az admin bekapcsolta és a hang engedélyezve van.
   const [audioOn, setAudioOn] = useState(audioReady())
+  const [dismissed, setDismissed] = useState('')   // a kiemelt közleményt a látogató bezárhatja (a TV-n nem)
   const key = state ? `${state.phase}-${state.current?.id ?? state.next?.id}` : ''
   const prev = useRef('')
   useEffect(() => {
@@ -111,7 +113,8 @@ export default function App() {
   if (!data) return <main><div className="panel"><div className="title">{offline ? 'Nincs kapcsolat és nincs mentett adat.' : 'Betöltés…'}</div></div></main>
   const s: BellState = state
   const byPos = (x: any[]) => [...x].sort((p: any, q: any) => p.position - q.position)
-  const pv = s.phase === 'closed' || s.phase === 'after' ? nextSchoolDay(z.date, data.schedules, data.closed) : undefined
+  const ovMap = Object.fromEntries(((data.schedule_dates ?? []) as any[]).map(x => [x.day, x.schedule_id])) as Record<string, string>
+  const pv = s.phase === 'closed' || s.phase === 'after' ? nextSchoolDay(z.date, data.schedules, data.closed, ovMap) : undefined
   const tl = s.phase === 'closed' ? pv?.schedule : schedule            // zárva: a következő tanítási nap rendje látszik
   const L = tl ? byPos(tl.lessons) : []
   const first = pv && byPos(pv.schedule.lessons)[0]
@@ -147,7 +150,7 @@ export default function App() {
   // ---- E heti rend (hétfő–péntek, plusz a hétvége, ha van rendje) ----
   const monday = addDays(z.date, 1 - z.weekday)
   const week = [0, 1, 2, 3, 4, 5, 6].map(i => {
-    const date = addDays(monday, i), sch = pickSchedule(data.schedules, i + 1), ls = sch ? byPos(sch.lessons) : []
+    const date = addDays(monday, i), sch = scheduleFor(date, data.schedules, ovMap), ls = sch ? byPos(sch.lessons) : []
     const off = (data.closed as { day: string; reason: string }[]).find(c => c.day === date)?.reason
     return { date, i, dim: !!off || !ls.length, info: off ?? (ls.length ? `${ls.length} óra, ${fmtHM(ls[0].start_time)}–${fmtHM(ls[ls.length - 1].end_time)}` : 'Nincs tanítás') }
   }).filter(w => w.i < 5 || !w.dim)
@@ -161,7 +164,7 @@ export default function App() {
   const evCard = (e: any, i: number) => {
     const k = KIND[e.kind] ?? KIND.other
     const d = Math.floor(e.left / 86400), h = Math.floor((e.left % 86400) / 3600), m = Math.floor((e.left % 3600) / 60), sec = e.left % 60
-    const nd = schoolDaysBetween(startDay, e.target_date, data.schedules, data.closed)
+    const nd = schoolDaysBetween(startDay, e.target_date, data.schedules, data.closed, ovMap)
     return <article key={e.id} className={`ev ${i === 0 ? 'big' : ''}`} style={{ '--k': k.color } as CSSProperties}>
       <div className="ev-top"><span className="ico" aria-hidden="true">{k.icon}</span><h3>{e.title}</h3></div>
       {i === 0
@@ -175,6 +178,25 @@ export default function App() {
     <ul className="offl">{upcoming.map(c => <li key={c.day}><b>{dayName(c.day, { month: 'long', day: 'numeric' })}</b>
       <span>{dayName(c.day, { weekday: 'long' })}, {c.reason}</span></li>)}</ul>
   </article>
+
+  // ---- Mai változások, ebéd, tanév haladása, kiemelt közlemény ----
+  const sett = data.settings
+  const KCH: Record<string, string> = { cancel: 'Elmarad', substitute: 'Helyettesítés', room: 'Teremváltás', info: 'Info' }
+  const chgs = ((data.changes ?? []) as any[]).filter(c => c.day === z.date)
+  const changesBox = chgs.length > 0 && <section className="panel full chg"><div className="tag">Mai változások</div>
+    <ul>{chgs.map(c => <li key={c.id}><b>{c.lesson_label}</b><span className={`chip k-${c.kind}`}>{KCH[c.kind]}</span><em>{c.text}</em></li>)}</ul></section>
+  const menu = ((data.menus ?? []) as any[]).find(m => m.day === z.date)
+  const SL = schedule ? byPos(schedule.lessons) : []
+  const li = sett.lunch_after ? SL.findIndex((l: any) => l.position === sett.lunch_after) : -1
+  const lunchTime = li >= 0 && SL[li + 1] ? `${fmtHM(SL[li].end_time)} – ${fmtHM(SL[li + 1].start_time)}` : ''
+  const lunchBox = menu && s.phase !== 'closed' && <section className="panel full lunch"><div className="tag">Mai ebéd{lunchTime ? `, ebédszünet ${lunchTime}` : ''}</div><p>{menu.text}</p></section>
+  const tms = (d: string) => Date.parse(d + 'T00:00:00Z')
+  const yp = sett.year_start && sett.year_end ? Math.round(Math.min(1, Math.max(0, (tms(z.date) - tms(sett.year_start)) / (tms(sett.year_end) - tms(sett.year_start)) || 0)) * 100) : 0
+  const yearBox = sett.year_start && sett.year_end && <section className="panel full"><div className="tag">Tanév haladása</div>
+    <div className="yearbar"><i style={{ width: `${yp}%` }} /></div>
+    <p className="meta">{yp}%, még {schoolDaysBetween(startDay, sett.year_end, data.schedules, data.closed, ovMap)} tanítási nap a tanév végéig</p></section>
+  const overlay = sett.alert_active && sett.alert_text && dismissed !== sett.alert_text && <div className="alertfs" role="alertdialog" aria-live="assertive">
+    <div className="alertbox"><div className="tag">Fontos közlemény</div><p>{sett.alert_text}</p>{!tv && <button onClick={() => setDismissed(sett.alert_text)}>Értettem</button>}</div></div>
 
   return <main className={tv ? 'tv' : ''}>
     <header>
@@ -191,6 +213,7 @@ export default function App() {
       </div>
     </header>
 
+    {changesBox}
     {!tv && stats && <section className="panel overview full"><div className="tag">A nap egy pillantásra</div>{stats}{strip}</section>}
 
     <section className={`panel now ${s.phase}`}>
@@ -200,7 +223,7 @@ export default function App() {
       {!tv && bells}
     </section>
 
-    {tv && <section className="tvside">{T.length > 0 ? <>{bells}{stats}</> : <>{events[0] && evCard(events[0], 0)}{offCard}</>}</section>}
+    {tv && <section className="tvside">{T.length > 0 ? <>{bells}{stats}{lunchBox}</> : <>{events[0] && evCard(events[0], 0)}{offCard}</>}</section>}
 
     {!tv && L.length > 0 && <section className="panel board">
       <div className="tag">{s.phase === 'closed' ? 'Következő tanítási nap' : 'Mai napirend'}</div>
@@ -218,9 +241,11 @@ export default function App() {
       })}</ol>
     </section>}
 
+    {!tv && lunchBox}
     {!tv && notes.length > 0 && <section className="panel full"><div className="tag">Közlemények</div>
       {notes.slice(0, 4).map(n => <p className="notice" key={n.id}>{n.text}</p>)}</section>}
 
+    {!tv && yearBox}
     {!tv && <section className="panel full"><div className="tag">E heti rend</div>
       <div className="week">{week.map(w => <div key={w.date} className={`wd ${w.date === z.date ? 'today' : ''} ${w.dim ? 'off' : ''}`}>
         <b>{dayName(w.date, { weekday: 'long' })}</b><small>{dayName(w.date, { month: 'long', day: 'numeric' })}</small><span>{w.info}</span></div>)}</div></section>}
@@ -233,5 +258,6 @@ export default function App() {
     {tv && strip && <div className="stripbox">{strip}</div>}
     {tv && note && <section className="ticker"><span>Közlemény</span><p key={note.id} className="flash">{note.text}</p></section>}
     {!tv && data.settings.site_version && <footer className="foot"><span className="ver">Verzió {data.settings.site_version}</span>{data.settings.version_note && <span>{data.settings.version_note}</span>}</footer>}
+    {overlay}
   </main>
 }
