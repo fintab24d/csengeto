@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { audioReady, enableAudio, ring } from './lib/sound'
+import { audioReady, enableAudio, preload, ring } from './lib/sound'
 import QRCode from 'qrcode'
 import { useSchool } from './lib/useSchool'
 import { KIND } from './lib/kinds'
@@ -134,6 +134,7 @@ export default function App() {
   // Csengetési hang: állapotváltáskor szól, ha az admin bekapcsolta és a hang engedélyezve van.
   const [audioOn, setAudioOn] = useState(audioReady())
   const [dismissed, setDismissed] = useState('')   // a kiemelt közleményt a látogató bezárhatja (a TV-n nem)
+  useEffect(() => { if (audioOn) preload(data?.settings.bell_sound_url) }, [audioOn, data?.settings.bell_sound_url])   // saját csengőhang előtöltése
   // Telepítés gomb (Chrome, Edge, Android): a böngésző jelzi, ha az oldal telepíthető
   const [installEv, setInstallEv] = useState<any>(null)
   useEffect(() => {
@@ -146,7 +147,7 @@ export default function App() {
   const key = state ? `${state.phase}-${state.current?.id ?? state.next?.id}` : ''
   const prev = useRef('')
   useEffect(() => {
-    if (prev.current && key !== prev.current && state?.phase !== 'closed' && data?.settings.sound_enabled) ring()
+    if (prev.current && key !== prev.current && state?.phase !== 'closed' && data?.settings.sound_enabled) ring(data.settings.bell_sound_url)
     prev.current = key
   }, [key])
   // TV-mód méretezése az admin beállítása szerint.

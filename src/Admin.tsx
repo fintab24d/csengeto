@@ -7,7 +7,7 @@ import { KIND, type Countdown } from './lib/kinds'
 
 interface Full {
   id: string; name: string
-  settings: { timezone: string; theme: string; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number; site_version: string; version_note: string; alert_text: string; alert_active: boolean; lunch_after: number | null; year_start: string | null; year_end: string | null; weather_enabled: boolean; weather_city: string; weather_lat: number | null; weather_lon: number | null; tv_show_qr: boolean }
+  settings: { timezone: string; theme: string; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number; site_version: string; version_note: string; alert_text: string; alert_active: boolean; lunch_after: number | null; year_start: string | null; year_end: string | null; weather_enabled: boolean; weather_city: string; weather_lat: number | null; weather_lon: number | null; tv_show_qr: boolean; bell_sound_url: string | null }
   countdowns: Countdown[]; announcements: { id: string; text: string; active_until: string | null }[]; schedule_dates: { id: string; day: string; schedule_id: string }[]; changes: { id: string; day: string; kind: string; lesson_label: string; text: string }[]; menus: { id: string; day: string; text: string }[]; schedules: Schedule[]; closed_days: { id: string; day: string; reason: string }[]
 }
 type Res = PromiseLike<{ error: { message: string } | null }>
@@ -18,7 +18,7 @@ const plus = (t: string, m: number) => { const s = Math.min(86340, toSec(t) + m 
 
 const TABLE: Record<string, string> = { schools: 'Iskola', settings: 'Beállítások', schedules: 'Csengetési rend', lessons: 'Óra', closed_days: 'Tanítás nélküli nap', countdowns: 'Visszaszámláló', announcements: 'Közlemény', school_members: 'Admin jogosultság', schedule_dates: 'Különleges nap', changes: 'Változás', menus: 'Étlap' }
 const ACT: Record<string, string> = { INSERT: 'létrehozott', UPDATE: 'módosított', DELETE: 'törölt' }
-const FIELD: Record<string, string> = { name: 'név', label: 'megnevezés', start_time: 'kezdés', end_time: 'vége', title: 'cím', text: 'szöveg', day: 'nap', reason: 'indok', target_date: 'dátum', target_time: 'időpont', weekdays: 'napok', is_default: 'alapértelmezett', timezone: 'időzóna', theme: 'téma', sound_enabled: 'hang', logo_url: 'logó', tv_show_seconds: 'TV másodperc', tv_show_next: 'TV következő', tv_scale: 'TV méret', site_version: 'verzió', version_note: 'verzió megjegyzés', kind: 'fajta', active_until: 'eddig', position: 'sorrend' }
+const FIELD: Record<string, string> = { name: 'név', label: 'megnevezés', start_time: 'kezdés', end_time: 'vége', title: 'cím', text: 'szöveg', day: 'nap', reason: 'indok', target_date: 'dátum', target_time: 'időpont', weekdays: 'napok', is_default: 'alapértelmezett', timezone: 'időzóna', theme: 'téma', sound_enabled: 'hang', logo_url: 'logó', tv_show_seconds: 'TV másodperc', tv_show_next: 'TV következő', tv_scale: 'TV méret', site_version: 'verzió', version_note: 'verzió megjegyzés', kind: 'fajta', active_until: 'eddig', position: 'sorrend', bell_sound_url: 'csengőhang' }
 const show = (v: unknown) => (v === null || v === undefined || v === '' ? '(üres)' : typeof v === 'boolean' ? (v ? 'be' : 'ki') : String(v).slice(0, 40))
 /** Rövid, olvasható leírás egy naplósorról (módosításnál: mező: régi → új). */
 const describe = (r: any) => {
@@ -128,6 +128,17 @@ function Panel() {
   }
 
   // Város keresése (Open-Meteo geokódoló): a találatra kattintva mentődik a hely
+  // Saját csengőhang feltöltése (a régi fájlt törli, hogy ne gyűljenek a feleslegesek)
+  const dropOldSound = () => { const p = d.settings.bell_sound_url?.split('/sounds/')[1]; if (p) supabase.storage.from('sounds').remove([decodeURIComponent(p)]) }
+  const uploadSound = async (f: File) => {
+    if (f.size > 2 * 1024 * 1024) return setMsg('A hangfájl legfeljebb 2 MB lehet.')
+    const path = `${d.id}/bell-${Date.now()}.${f.name.split('.').pop()}`   // mappa = iskola azonosító (RLS ezt ellenőrzi)
+    const { error } = await supabase.storage.from('sounds').upload(path, f, { contentType: f.type })
+    if (error) return setMsg('Hiba: ' + error.message)
+    dropOldSound()
+    await setS({ bell_sound_url: supabase.storage.from('sounds').getPublicUrl(path).data.publicUrl })
+  }
+
   const searchCity = async () => {
     try {
       const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(wq.trim())}&count=5&language=hu&format=json`)
@@ -151,7 +162,10 @@ function Panel() {
       <div className="row">Időzóna <select value={d.settings.timezone} onChange={e => setS({ timezone: e.target.value })}>{ZONES.map(z => <option key={z}>{z}</option>)}</select>
         Téma <select value={d.settings.theme} onChange={e => setS({ theme: e.target.value })}><option value="dark">Sötét</option><option value="light">Világos</option></select></div>
       <div className="row"><label><input type="checkbox" checked={d.settings.sound_enabled} onChange={e => setS({ sound_enabled: e.target.checked })} /> Csengetési hang</label>
-        <button onClick={async () => { await enableAudio(); ring() }}>Hang kipróbálása</button></div>
+        <button onClick={async () => { await enableAudio(); ring(d.settings.bell_sound_url) }}>Hang kipróbálása</button></div>
+      <div className="row">Csengőhang: <b>{d.settings.bell_sound_url ? 'saját fájl' : 'alapértelmezett'}</b>
+        <input type="file" accept="audio/mpeg,audio/ogg,audio/wav,audio/mp4,audio/aac,audio/webm,.mp3,.ogg,.wav,.m4a" onChange={e => e.target.files?.[0] && uploadSound(e.target.files[0])} />
+        {d.settings.bell_sound_url && <button onClick={() => { dropOldSound(); setS({ bell_sound_url: null }) }}>Alapértelmezett hang visszaállítása</button>}</div>
       <div className="row">Logó {d.settings.logo_url && <img className="logo" src={d.settings.logo_url} alt="" />}
         <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => e.target.files?.[0] && upload(e.target.files[0])} />
         {d.settings.logo_url && <button onClick={() => setS({ logo_url: null })}>Logó eltávolítása</button>}</div>
