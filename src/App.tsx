@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { audioReady, enableAudio, ring } from './lib/sound'
+import QRCode from 'qrcode'
 import { useSchool } from './lib/useSchool'
 import { KIND } from './lib/kinds'
 import { computeState, fmtCount, fmtHM, addDays, instantOf, nextSchoolDay, pickSchedule, scheduleFor, schoolDaysBetween, toSec, zoned, type BellState } from './lib/engine'
@@ -70,6 +71,13 @@ function NextDay({ label, time, until }: { label: string; time: string; until: n
   return <div className="next nextday"><span>Legközelebb</span><b>{label}, {time}</b><span>még {left}</span></div>
 }
 
+/** QR-kód az oldal címéről (a TV-n a telefonos megnyitáshoz); fehér alapon, hogy bármilyen témában olvasható maradjon. */
+function useQr(text: string, on: boolean) {
+  const [src, setSrc] = useState('')
+  useEffect(() => { if (on) QRCode.toDataURL(text, { margin: 1, width: 360 }).then(setSrc).catch(() => setSrc('')) }, [text, on])
+  return on ? src : ''
+}
+
 /** WMO időjárási kód → ikon és magyar leírás */
 const WX = (c: number): [string, string] => c === 0 ? ['☀️', 'Derült'] : c <= 2 ? ['🌤️', 'Részben felhős'] : c === 3 ? ['☁️', 'Borult'] : c <= 48 ? ['🌫️', 'Ködös']
   : c <= 57 ? ['🌦️', 'Szitálás'] : c <= 67 ? ['🌧️', 'Eső'] : c <= 77 ? ['❄️', 'Havazás'] : c <= 82 ? ['🌦️', 'Zápor'] : c <= 86 ? ['🌨️', 'Hózápor'] : ['⛈️', 'Zivatar']
@@ -126,6 +134,14 @@ export default function App() {
   // Csengetési hang: állapotváltáskor szól, ha az admin bekapcsolta és a hang engedélyezve van.
   const [audioOn, setAudioOn] = useState(audioReady())
   const [dismissed, setDismissed] = useState('')   // a kiemelt közleményt a látogató bezárhatja (a TV-n nem)
+  // Telepítés gomb (Chrome, Edge, Android): a böngésző jelzi, ha az oldal telepíthető
+  const [installEv, setInstallEv] = useState<any>(null)
+  useEffect(() => {
+    const on = (e: Event) => { e.preventDefault(); setInstallEv(e) }, done = () => setInstallEv(null)
+    window.addEventListener('beforeinstallprompt', on); window.addEventListener('appinstalled', done)
+    return () => { window.removeEventListener('beforeinstallprompt', on); window.removeEventListener('appinstalled', done) }
+  }, [])
+  const qr = useQr(location.origin + '/', tv && data?.settings.tv_show_qr !== false)
   const wx = useWeather(data?.settings.weather_lat ?? null, data?.settings.weather_lon ?? null, data?.settings.timezone, !!data?.settings.weather_enabled)
   const key = state ? `${state.phase}-${state.current?.id ?? state.next?.id}` : ''
   const prev = useRef('')
@@ -226,6 +242,7 @@ export default function App() {
 
   return <main className={tv ? 'tv' : ''}>
     <header>
+      {tv && qr && <div className="qrbox"><img src={qr} alt="QR-kód az oldal megnyitásához" /><span>Nyisd meg telefonon</span></div>}
       <span className="brand"><img className="logo" src={data.settings.logo_url || '/logo.png'} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />{data.name}</span>
       <div className="timebox">
         <Digits text={tv && !data.settings.tv_show_seconds ? hms(z.secs).slice(0, 5) : hms(z.secs)} />
@@ -235,6 +252,7 @@ export default function App() {
       <div className="tools">
         {offline && <span className="pill">Offline mód</span>}
         {data.settings.sound_enabled && !audioOn && <button className="cta" onClick={async () => setAudioOn(await enableAudio())}>Hang engedélyezése</button>}
+        {!tv && installEv && <button className="cta" onClick={async () => { installEv.prompt(); await installEv.userChoice; setInstallEv(null) }}>Telepítés</button>}
         {!tv && <div className="styles" role="group" aria-label="Stílus">{STYLES.map(([k, n]) => <button key={k} className={style === k ? 'on' : ''} aria-pressed={style === k} onClick={() => setStyle(k)}>{n}</button>)}</div>}
         {!tv && <button onClick={() => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('theme', t); setTheme(t) }}>Téma</button>}
       </div>

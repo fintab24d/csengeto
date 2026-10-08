@@ -7,7 +7,7 @@ import { KIND, type Countdown } from './lib/kinds'
 
 interface Full {
   id: string; name: string
-  settings: { timezone: string; theme: string; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number; site_version: string; version_note: string; alert_text: string; alert_active: boolean; lunch_after: number | null; year_start: string | null; year_end: string | null; weather_enabled: boolean; weather_city: string; weather_lat: number | null; weather_lon: number | null }
+  settings: { timezone: string; theme: string; sound_enabled: boolean; logo_url: string | null; tv_show_seconds: boolean; tv_show_next: boolean; tv_scale: number; site_version: string; version_note: string; alert_text: string; alert_active: boolean; lunch_after: number | null; year_start: string | null; year_end: string | null; weather_enabled: boolean; weather_city: string; weather_lat: number | null; weather_lon: number | null; tv_show_qr: boolean }
   countdowns: Countdown[]; announcements: { id: string; text: string; active_until: string | null }[]; schedule_dates: { id: string; day: string; schedule_id: string }[]; changes: { id: string; day: string; kind: string; lesson_label: string; text: string }[]; menus: { id: string; day: string; text: string }[]; schedules: Schedule[]; closed_days: { id: string; day: string; reason: string }[]
 }
 type Res = PromiseLike<{ error: { message: string } | null }>
@@ -158,6 +158,7 @@ function Panel() {
       <div className="row">TV-mód:
         <label><input type="checkbox" checked={d.settings.tv_show_seconds} onChange={e => setS({ tv_show_seconds: e.target.checked })} /> másodperc az órán</label>
         <label><input type="checkbox" checked={d.settings.tv_show_next} onChange={e => setS({ tv_show_next: e.target.checked })} /> következő óra</label>
+        <label><input type="checkbox" checked={d.settings.tv_show_qr !== false} onChange={e => setS({ tv_show_qr: e.target.checked })} /> QR-kód</label>
         <label>méret <input type="number" min={50} max={150} step={10} defaultValue={d.settings.tv_scale} key={d.settings.tv_scale} onBlur={e => setS({ tv_scale: Math.min(150, Math.max(50, +e.target.value || 100)) })} /> %</label></div>
       <div className="row">Oldal verziója <input size={8} placeholder="pl. 1.2.0" defaultValue={d.settings.site_version ?? ''} key={'v' + d.settings.site_version}
           onBlur={e => e.target.value !== (d.settings.site_version ?? '') && setS({ site_version: e.target.value })} />

@@ -1,6 +1,6 @@
 # Csengetési kijelző
 
-Ez egy iskolai élő csengetési oldal. Megmutatja, hány óra van, melyik óra vagy szünet tart éppen, és mennyi idő van hátra a következő csengetésig. Nem kell frissítened, magától pörög.
+Ez az iskola élő csengetési oldala. Megmutatja, hány óra van, melyik óra vagy szünet tart éppen, és mennyi idő van hátra a következő csengetésig. Nem kell frissítened, magától pörög.
 
 ## Hol találod?
 - **Főoldal:** a teljes napi áttekintés, telefonon és számítógépen is.
@@ -33,6 +33,11 @@ Hétvégén, ünnepnapon és tanítási idő után az oldal kiírja, hogy ma nin
 ## Gombok
 - **Téma:** átváltás sötét és világos megjelenés között. Az oldal megjegyzi a választásodat.
 - **Hang engedélyezése:** ha az iskola bekapcsolta a csengetési hangot, a böngésző biztonsági okból csak akkor engedi lejátszani, ha egyszer rákattintasz erre a gombra.
+
+## Telepítés alkalmazásként
+Az oldalt telepítheted a telefonodra vagy a számítógépedre, és onnantól külön ikonról indul, internet nélkül is megnyílik (az utoljára betöltött adatokkal).
+- **Android, Chrome, Edge (számítógép):** ha megjelenik a **Telepítés** gomb az oldal tetején, nyomd meg. Ha nem, a böngésző menüjében keresd a "Telepítés" vagy az "Alkalmazás telepítése" pontot.
+- **iPhone, iPad (Safari):** koppints a Megosztás ikonra, majd a **Főképernyőhöz adás** pontra.
 
 ## Gyakori kérdések
 

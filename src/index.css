@@ -260,3 +260,6 @@ html:is([data-style=school],[data-style=minimal])::after,
 @media(prefers-reduced-motion:reduce){.alertbox,.alertfs,.yearbar i{animation:none}}
 .wx{display:flex;flex-wrap:wrap;gap:2px 10px;justify-content:center;align-items:baseline}.wx b{font-weight:600}.wx small{color:var(--mut);font-size:.9rem}
 .tv .wx{font-size:3vh}.tv .wx small{font-size:2.2vh}
+.tv header{position:relative}
+.qrbox{position:absolute;right:0;top:0;display:grid;justify-items:center;gap:.6vh;padding:1vh;border-radius:12px;background:#fff;color:#111;font-size:1.7vh;text-align:center}
+.qrbox img{display:block;width:13vh;height:13vh}
