@@ -263,3 +263,11 @@ html:is([data-style=school],[data-style=minimal])::after,
 .tv header{position:relative}
 .qrbox{position:absolute;right:0;top:0;display:grid;justify-items:center;gap:.6vh;padding:1vh;border-radius:12px;background:#fff;color:#111;font-size:1.7vh;text-align:center}
 .qrbox img{display:block;width:13vh;height:13vh}
+
+/* Telepítési oldal (/telepites) */
+.install{max-width:520px;display:block;margin:auto}.install .panel{display:grid;gap:14px;justify-items:center;text-align:center}
+.install h1{margin:0;font-size:1.7rem}.install p{margin:0;color:var(--mut)}
+.appicon{width:96px;height:96px;border-radius:22px}
+.install ol{text-align:left;margin:0;padding-left:1.3rem;display:grid;gap:8px}
+a.btn{display:inline-block;padding:8px 18px;border:1px solid var(--edge);border-radius:12px;background:var(--key);color:var(--fg);text-decoration:none;font-weight:600}
+a.btn:hover{border-color:var(--brand)}

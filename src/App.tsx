@@ -142,7 +142,8 @@ export default function App() {
     window.addEventListener('beforeinstallprompt', on); window.addEventListener('appinstalled', done)
     return () => { window.removeEventListener('beforeinstallprompt', on); window.removeEventListener('appinstalled', done) }
   }, [])
-  const qr = useQr(location.origin + '/', tv && data?.settings.tv_show_qr !== false)
+  const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true
+  const qr = useQr(location.origin + '/telepites', tv && data?.settings.tv_show_qr !== false)
   const wx = useWeather(data?.settings.weather_lat ?? null, data?.settings.weather_lon ?? null, data?.settings.timezone, !!data?.settings.weather_enabled)
   const key = state ? `${state.phase}-${state.current?.id ?? state.next?.id}` : ''
   const prev = useRef('')
@@ -243,7 +244,7 @@ export default function App() {
 
   return <main className={tv ? 'tv' : ''}>
     <header>
-      {tv && qr && <div className="qrbox"><img src={qr} alt="QR-kód az oldal megnyitásához" /><span>Nyisd meg telefonon</span></div>}
+      {tv && qr && <div className="qrbox"><img src={qr} alt="QR-kód az oldal megnyitásához" /><span>Telepítsd a telefonodra</span></div>}
       <span className="brand"><img className="logo" src={data.settings.logo_url || '/logo.png'} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />{data.name}</span>
       <div className="timebox">
         <Digits text={tv && !data.settings.tv_show_seconds ? hms(z.secs).slice(0, 5) : hms(z.secs)} />
@@ -253,7 +254,7 @@ export default function App() {
       <div className="tools">
         {offline && <span className="pill">Offline mód</span>}
         {data.settings.sound_enabled && !audioOn && <button className="cta" onClick={async () => setAudioOn(await enableAudio())}>Hang engedélyezése</button>}
-        {!tv && installEv && <button className="cta" onClick={async () => { installEv.prompt(); await installEv.userChoice; setInstallEv(null) }}>Telepítés</button>}
+        {!tv && !standalone && (installEv ? <button className="cta" onClick={async () => { installEv.prompt(); await installEv.userChoice; setInstallEv(null) }}>Telepítés</button> : <button onClick={() => location.assign('/telepites')}>Telepítés</button>)}
         {!tv && <div className="styles" role="group" aria-label="Stílus">{STYLES.map(([k, n]) => <button key={k} className={style === k ? 'on' : ''} aria-pressed={style === k} onClick={() => setStyle(k)}>{n}</button>)}</div>}
         {!tv && <button onClick={() => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('theme', t); setTheme(t) }}>Téma</button>}
       </div>

@@ -35,7 +35,7 @@ Hétvégén, ünnepnapon és tanítási idő után az oldal kiírja, hogy ma nin
 - **Hang engedélyezése:** ha az iskola bekapcsolta a csengetési hangot, a böngésző biztonsági okból csak akkor engedi lejátszani, ha egyszer rákattintasz erre a gombra.
 
 ## Telepítés alkalmazásként
-Az oldalt telepítheted a telefonodra vagy a számítógépedre, és onnantól külön ikonról indul, internet nélkül is megnyílik (az utoljára betöltött adatokkal).
+Az oldalt telepítheted a telefonodra vagy a számítógépedre, és onnantól külön ikonról indul, internet nélkül is megnyílik (az utoljára betöltött adatokkal). A folyosói kijelzőn lévő QR-kód közvetlenül a telepítési oldalra visz, ott lépésről lépésre végigvezet az oldal.
 - **Android, Chrome, Edge (számítógép):** ha megjelenik a **Telepítés** gomb az oldal tetején, nyomd meg. Ha nem, a böngésző menüjében keresd a "Telepítés" vagy az "Alkalmazás telepítése" pontot.
 - **iPhone, iPad (Safari):** koppints a Megosztás ikonra, majd a **Főképernyőhöz adás** pontra.
 
