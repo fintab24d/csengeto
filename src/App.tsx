@@ -3,6 +3,7 @@ import { audioReady, enableAudio, preload, ring } from './lib/sound'
 import QRCode from 'qrcode'
 import { useSchool } from './lib/useSchool'
 import { KIND } from './lib/kinds'
+import { APP_NAME } from './lib/brand'
 import { computeState, fmtCount, fmtHM, addDays, instantOf, nextSchoolDay, pickSchedule, scheduleFor, schoolDaysBetween, toSec, zoned, type BellState } from './lib/engine'
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -129,7 +130,7 @@ export default function App() {
   useEffect(() => { document.documentElement.dataset.style = style; localStorage.setItem('style', style) }, [style])
   useEffect(() => { document.documentElement.dataset.theme = theme || data?.settings.theme || 'dark' }, [theme, data])
   useEffect(() => { document.documentElement.dataset.phase = state?.phase ?? '' }, [state?.phase])
-  useEffect(() => { document.title = data ? data.name : 'Csengetés' }, [data])
+  useEffect(() => { document.title = APP_NAME }, [])
 
   // Csengetési hang: állapotváltáskor szól, ha az admin bekapcsolta és a hang engedélyezve van.
   const [audioOn, setAudioOn] = useState(audioReady())
@@ -245,7 +246,7 @@ export default function App() {
   return <main className={tv ? 'tv' : ''}>
     <header>
       {tv && qr && <div className="qrbox"><img src={qr} alt="QR-kód az oldal megnyitásához" /><span>Telepítsd a telefonodra</span></div>}
-      <span className="brand"><img className="logo" src={data.settings.logo_url || '/logo.png'} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />{data.name}</span>
+      <span className="brand"><img className="logo" src={data.settings.logo_url || '/logo.png'} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />{APP_NAME}</span>
       <div className="timebox">
         <Digits text={tv && !data.settings.tv_show_seconds ? hms(z.secs).slice(0, 5) : hms(z.secs)} />
         <div className="date">{dateText}</div>

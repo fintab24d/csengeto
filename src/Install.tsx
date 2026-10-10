@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { APP_NAME } from './lib/brand'
 
 /** Telepítési oldal (/telepites): a TV-n lévő QR-kód ide visz.
  *  Android / számítógép (Chrome, Edge): Telepítés gomb. iPhone / iPad: lépésről lépésre útmutató. */
@@ -8,7 +9,7 @@ export default function Install() {
   useEffect(() => {
     document.documentElement.dataset.theme = localStorage.getItem('theme') ?? 'dark'
     document.documentElement.dataset.style = localStorage.getItem('style') ?? 'neon'
-    document.title = 'Telepítés'
+    document.title = `Telepítés – ${APP_NAME}`
     const on = (e: Event) => {
       e.preventDefault(); setEv(e)
       // Automatikus kísérlet: a böngésző általában elutasítja (koppintás nélkül nem engedi), ilyenkor egy koppintás elég
@@ -23,7 +24,7 @@ export default function Install() {
 
   return <main className="install" onClick={e => { if (ev && !(e.target as HTMLElement).closest('a,button')) install() }}><section className="panel">
     <img className="appicon" src="/icon-192.png" alt="" />
-    <h1>Telepítsd alkalmazásként</h1>
+    <h1>Telepítsd a {APP_NAME} alkalmazást</h1>
     {standalone || done ? <p>Kész, az alkalmazás már telepítve van.</p>
       : ev ? <><p>Koppints bárhová a képernyőn, és a telefon felajánlja a telepítést. A kezdőképernyőre kerül, és onnan indul.</p>
           <button className="cta" onClick={install}>Telepítés most</button></>

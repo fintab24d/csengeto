@@ -1,6 +1,6 @@
 {
-  "name": "Csengetési kijelző",
-  "short_name": "Csengetés",
+  "name": "SuliBell",
+  "short_name": "SuliBell",
   "description": "Az iskola élő csengetési oldala: óra, szünet, visszaszámláló.",
   "lang": "hu",
   "start_url": "/",

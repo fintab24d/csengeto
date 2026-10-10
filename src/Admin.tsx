@@ -158,7 +158,7 @@ function Panel() {
     <p className="msg" role="status">{msg}</p>
 
     <section><h2>Beállítások</h2>
-      <div className="row">Iskola neve <input defaultValue={d.name} key={d.name} onBlur={e => e.target.value !== d.name && run(supabase.from('schools').update({ name: e.target.value }).eq('id', d.id))} /></div>
+      <div className="row">Iskola neve (csak az adminban látszik) <input defaultValue={d.name} key={d.name} onBlur={e => e.target.value !== d.name && run(supabase.from('schools').update({ name: e.target.value }).eq('id', d.id))} /></div>
       <div className="row">Időzóna <select value={d.settings.timezone} onChange={e => setS({ timezone: e.target.value })}>{ZONES.map(z => <option key={z}>{z}</option>)}</select>
         Téma <select value={d.settings.theme} onChange={e => setS({ theme: e.target.value })}><option value="dark">Sötét</option><option value="light">Világos</option></select></div>
       <div className="row"><label><input type="checkbox" checked={d.settings.sound_enabled} onChange={e => setS({ sound_enabled: e.target.checked })} /> Csengetési hang</label>
